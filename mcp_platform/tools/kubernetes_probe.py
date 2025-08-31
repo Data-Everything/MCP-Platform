@@ -11,11 +11,14 @@ from typing import Any, Dict, List, Optional
 
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
-from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
-                      wait_fixed)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from .base_probe import (DISCOVERY_RETRIES, DISCOVERY_RETRY_SLEEP,
-                         DISCOVERY_TIMEOUT, BaseProbe)
+from .base_probe import (
+    DISCOVERY_RETRIES,
+    DISCOVERY_RETRY_SLEEP,
+    DISCOVERY_TIMEOUT,
+    BaseProbe,
+)
 
 logger = logging.getLogger(__name__)
 

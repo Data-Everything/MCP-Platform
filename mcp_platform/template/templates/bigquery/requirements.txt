@@ -1,0 +1,57 @@
+# BigQuery MCP Server Requirements
+# Production-ready BigQuery MCP server with comprehensive Google Cloud integration
+
+# FastMCP framework for MCP server implementation
+fastmcp>=0.14.2
+
+# Google Cloud BigQuery client library
+google-cloud-bigquery>=3.14.0
+
+# Google Cloud authentication libraries
+google-auth>=2.24.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.2.0
+
+# OAuth2 support for Google authentication
+google-oauth2-tool>=0.0.3
+
+# Additional Google Cloud core libraries
+google-api-core>=2.15.0
+google-cloud-core>=2.4.1
+
+# HTTP client with retry and timeout support
+requests>=2.31.0
+
+# JSON handling for BigQuery responses
+google-cloud-bigquery-storage>=2.22.0
+
+# Async support for concurrent operations
+aiohttp>=3.9.0
+
+# Configuration and environment management
+python-dotenv>=1.0.0
+
+# Rich console output for better logging
+rich>=13.7.0
+
+# Development dependencies (for local testing)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.12.0
+responses>=0.24.0
+
+# Type checking
+mypy>=1.7.0
+types-requests>=2.31.0
+
+# Code quality
+black>=23.11.0
+isort>=5.12.0
+flake8>=6.1.0
+
+# Security scanning
+bandit>=1.7.5
+
+# Documentation
+mkdocs>=1.5.3
+mkdocs-material>=9.4.0

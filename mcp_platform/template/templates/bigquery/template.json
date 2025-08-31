@@ -1,0 +1,226 @@
+{
+  "id": "bigquery",
+  "name": "BigQuery MCP Server",
+  "description": "Production-ready BigQuery MCP server for secure querying of Google BigQuery datasets with configurable access controls",
+  "version": "1.0.0",
+  "author": "Data Everything",
+  "category": "Database",
+  "tags": [
+    "bigquery",
+    "google-cloud",
+    "database",
+    "analytics",
+    "sql",
+    "fastmcp"
+  ],
+  "docker_image": "dataeverything/mcp-bigquery",
+  "docker_tag": "latest",
+  "ports": {
+    "7072": 7072
+  },
+  "command": [],
+  "transport": {
+    "default": "http",
+    "supported": ["http", "stdio"],
+    "port": 7072
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "project_id": {
+        "type": "string",
+        "title": "Google Cloud Project ID",
+        "description": "Google Cloud project ID containing BigQuery datasets",
+        "env_mapping": "GOOGLE_CLOUD_PROJECT"
+      },
+      "auth_method": {
+        "type": "string",
+        "title": "Authentication Method",
+        "description": "Method for authenticating with Google Cloud",
+        "enum": [
+          "service_account",
+          "oauth2",
+          "application_default"
+        ],
+        "default": "application_default",
+        "env_mapping": "BIGQUERY_AUTH_METHOD"
+      },
+      "service_account_path": {
+        "type": "string",
+        "title": "Service Account Key Path",
+        "description": "Path to service account JSON key file (required if auth_method is service_account)",
+        "env_mapping": "GOOGLE_APPLICATION_CREDENTIALS",
+        "volume_mount": true
+      },
+      "read_only": {
+        "type": "boolean",
+        "title": "Read-Only Mode",
+        "description": "Enable read-only mode to prevent data modifications (recommended for security)",
+        "default": true,
+        "env_mapping": "BIGQUERY_READ_ONLY"
+      },
+      "allowed_datasets": {
+        "type": "string",
+        "title": "Allowed Datasets",
+        "description": "Comma-separated list of dataset patterns. Use * for all datasets, or specify patterns like 'analytics_*,public_data'",
+        "default": "*",
+        "env_mapping": "BIGQUERY_ALLOWED_DATASETS"
+      },
+      "dataset_regex": {
+        "type": "string",
+        "title": "Dataset Regex Filter",
+        "description": "Optional regex pattern for advanced dataset filtering. Takes precedence over allowed_datasets if provided",
+        "env_mapping": "BIGQUERY_DATASET_REGEX"
+      },
+      "query_timeout": {
+        "type": "integer",
+        "title": "Query Timeout (seconds)",
+        "description": "Maximum time to wait for query execution",
+        "default": 300,
+        "minimum": 10,
+        "maximum": 3600,
+        "env_mapping": "BIGQUERY_QUERY_TIMEOUT"
+      },
+      "max_results": {
+        "type": "integer",
+        "title": "Maximum Query Results",
+        "description": "Maximum number of rows to return from queries",
+        "default": 1000,
+        "minimum": 1,
+        "maximum": 10000,
+        "env_mapping": "BIGQUERY_MAX_RESULTS"
+      },
+      "log_level": {
+        "type": "string",
+        "title": "Log Level",
+        "description": "Logging level for the server",
+        "enum": [
+          "debug",
+          "info",
+          "warning",
+          "error"
+        ],
+        "default": "info",
+        "env_mapping": "MCP_LOG_LEVEL"
+      }
+    },
+    "required": ["project_id"]
+  },
+  "capabilities": [
+    {
+      "name": "Dataset Discovery",
+      "description": "List and explore BigQuery datasets and tables",
+      "example": "List all accessible datasets, browse table schemas, get dataset metadata"
+    },
+    {
+      "name": "Schema Inspection",
+      "description": "Inspect table schemas and column information",
+      "example": "Get detailed schema for tables, view column types and descriptions"
+    },
+    {
+      "name": "Query Execution",
+      "description": "Execute SQL queries against BigQuery datasets",
+      "example": "Run SELECT queries, analyze data, generate reports (read-only by default)"
+    },
+    {
+      "name": "Access Control",
+      "description": "Configurable dataset access controls and security",
+      "example": "Filter accessible datasets, enforce read-only mode, pattern-based access"
+    }
+  ],
+  "tools": [
+    {
+      "name": "list_datasets",
+      "description": "List all accessible BigQuery datasets in the project",
+      "parameters": []
+    },
+    {
+      "name": "list_tables",
+      "description": "List tables in a specific dataset",
+      "parameters": [
+        {
+          "name": "dataset_id",
+          "description": "Dataset ID to list tables from",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "describe_table",
+      "description": "Get detailed schema information for a table",
+      "parameters": [
+        {
+          "name": "dataset_id",
+          "description": "Dataset ID containing the table",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "table_id",
+          "description": "Table ID to describe",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "execute_query",
+      "description": "Execute a SQL query against BigQuery (subject to read-only restrictions)",
+      "parameters": [
+        {
+          "name": "query",
+          "description": "SQL query to execute",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "dry_run",
+          "description": "Validate query without executing (default: false)",
+          "type": "boolean",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_job_status",
+      "description": "Get status of a BigQuery job",
+      "parameters": [
+        {
+          "name": "job_id",
+          "description": "BigQuery job ID to check",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_dataset_info",
+      "description": "Get detailed information about a dataset",
+      "parameters": [
+        {
+          "name": "dataset_id",
+          "description": "Dataset ID to get information for",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "tool_discovery": "static",
+  "tool_endpoint": "/tools",
+  "has_image": true,
+  "origin": "internal",
+  "examples": {
+    "http_endpoint": "http://localhost:7072",
+    "cli_usage": [
+      "python -m mcp_platform deploy bigquery --config project_id='my-gcp-project'",
+      "python -m mcp_platform deploy bigquery --config project_id='my-project' --config auth_method='service_account' --config service_account_path='/path/to/key.json'",
+      "python -m mcp_platform deploy bigquery --config project_id='my-project' --config allowed_datasets='analytics_*,public_*' --config read_only=false"
+    ],
+    "client_integration": {
+      "fastmcp": "from fastmcp.client import FastMCPClient\nclient = FastMCPClient(endpoint='http://localhost:7072')\nresult = client.call('list_datasets')",
+      "curl": "curl -X POST http://localhost:7072/call -H 'Content-Type: application/json' -d '{\"method\": \"execute_query\", \"params\": {\"query\": \"SELECT COUNT(*) FROM `my-project.my_dataset.my_table`\"}}'"
+    }
+  }
+}
