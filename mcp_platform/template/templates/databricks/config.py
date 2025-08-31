@@ -94,8 +94,12 @@ class DatabricksServerConfig:
         # Check required fields only if we have any config (not just loading template)
         if self.config_dict:
             for field in required:
-                if field not in self.config_dict and not os.getenv(f"DATABRICKS_{field.upper()}"):
-                    self.logger.warning("Required configuration field '%s' is missing", field)
+                if field not in self.config_dict and not os.getenv(
+                    f"DATABRICKS_{field.upper()}"
+                ):
+                    self.logger.warning(
+                        "Required configuration field '%s' is missing", field
+                    )
 
         # Validate field types and values
         for key, value in self.config_dict.items():
@@ -109,19 +113,23 @@ class DatabricksServerConfig:
     def _validate_field(self, key: str, value: Any, schema: Dict[str, Any]) -> None:
         """Validate a single configuration field."""
         field_type = schema.get("type", "string")
-        
+
         if field_type == "boolean":
             if not isinstance(value, bool):
                 try:
                     self.config_dict[key] = self._convert_to_boolean(value)
                 except ValueError:
-                    self.logger.warning("Invalid boolean value for '%s': %s", key, value)
+                    self.logger.warning(
+                        "Invalid boolean value for '%s': %s", key, value
+                    )
         elif field_type == "integer":
             if not isinstance(value, int):
                 try:
                     self.config_dict[key] = int(value)
                 except ValueError:
-                    self.logger.warning("Invalid integer value for '%s': %s", key, value)
+                    self.logger.warning(
+                        "Invalid integer value for '%s': %s", key, value
+                    )
         elif field_type == "string":
             if value is not None:
                 self.config_dict[key] = str(value)
@@ -129,8 +137,10 @@ class DatabricksServerConfig:
         # Validate enum values
         if "enum" in schema and value not in schema["enum"]:
             self.logger.warning(
-                "Invalid value for '%s': %s. Valid values: %s", 
-                key, value, schema["enum"]
+                "Invalid value for '%s': %s. Valid values: %s",
+                key,
+                value,
+                schema["enum"],
             )
 
     def _validate_databricks_config(self) -> None:
@@ -140,12 +150,12 @@ class DatabricksServerConfig:
         if workspace_host and not workspace_host.startswith(("http://", "https://")):
             self.logger.warning(
                 "Workspace host should include protocol (http:// or https://): %s",
-                workspace_host
+                workspace_host,
             )
 
         # Validate authentication method and required credentials
         auth_method = self.config_dict.get("auth_method", "pat")
-        
+
         if auth_method == "pat":
             if not self.config_dict.get("access_token"):
                 self.logger.warning(
@@ -157,7 +167,9 @@ class DatabricksServerConfig:
                     "OAuth authentication requires oauth_token to be set"
                 )
         elif auth_method == "username_password":
-            if not self.config_dict.get("username") or not self.config_dict.get("password"):
+            if not self.config_dict.get("username") or not self.config_dict.get(
+                "password"
+            ):
                 self.logger.warning(
                     "Username/password authentication requires both username and password"
                 )
@@ -179,7 +191,7 @@ class DatabricksServerConfig:
 
         for pattern_name, pattern in [
             ("allowed_databases", allowed_databases),
-            ("allowed_schemas", allowed_schemas)
+            ("allowed_schemas", allowed_schemas),
         ]:
             if pattern and pattern != "*":
                 # Try to validate regex patterns
@@ -190,7 +202,9 @@ class DatabricksServerConfig:
                     except re.error as e:
                         self.logger.warning(
                             "Invalid regex pattern in %s: '%s' - %s",
-                            pattern_name, p, str(e)
+                            pattern_name,
+                            p,
+                            str(e),
                         )
 
     def _convert_to_boolean(self, value: Any) -> bool:

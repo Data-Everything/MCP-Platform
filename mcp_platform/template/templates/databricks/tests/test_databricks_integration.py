@@ -18,16 +18,17 @@ Example:
 """
 
 import os
-import pytest
-import asyncio
-from typing import Dict, Any
+from typing import Any, Dict
 
-from mcp_platform.template.templates.databricks.server import DatabricksMCPServer
+import pytest
+
+from mcp_platform.template.templates.databricks.server import \
+    DatabricksMCPServer
 
 # Skip all tests in this module if integration testing is not enabled
 pytestmark = pytest.mark.skipif(
     not os.getenv("DATABRICKS_INTEGRATION_TEST", "").lower() == "true",
-    reason="Set DATABRICKS_INTEGRATION_TEST=true to run integration tests"
+    reason="Set DATABRICKS_INTEGRATION_TEST=true to run integration tests",
 )
 
 
@@ -40,7 +41,7 @@ def integration_config() -> Dict[str, Any]:
         "auth_method": "pat",
         "read_only": True,
         "max_rows": 10,  # Limit for testing
-        "connection_timeout": 30
+        "connection_timeout": 30,
     }
 
 
@@ -64,13 +65,13 @@ class TestDatabricksIntegration:
     async def test_list_clusters_integration(self, server):
         """Test listing clusters against real Databricks workspace."""
         result = await server.list_clusters()
-        
+
         # Should return successful result structure
         assert "clusters" in result
         assert "count" in result
         assert isinstance(result["clusters"], list)
         assert isinstance(result["count"], int)
-        
+
         # If clusters exist, validate structure
         if result["count"] > 0:
             cluster = result["clusters"][0]
@@ -82,13 +83,13 @@ class TestDatabricksIntegration:
     async def test_list_warehouses_integration(self, server):
         """Test listing warehouses against real Databricks workspace."""
         result = await server.list_warehouses()
-        
+
         # Should return successful result structure
         assert "warehouses" in result
         assert "count" in result
         assert isinstance(result["warehouses"], list)
         assert isinstance(result["count"], int)
-        
+
         # If warehouses exist, validate structure
         if result["count"] > 0:
             warehouse = result["warehouses"][0]
@@ -100,16 +101,16 @@ class TestDatabricksIntegration:
     async def test_list_databases_integration(self, server):
         """Test listing databases against real Databricks workspace."""
         result = await server.list_databases()
-        
+
         # Should return successful result structure
         assert "databases" in result
         assert "count" in result
         assert isinstance(result["databases"], list)
         assert isinstance(result["count"], int)
-        
+
         # Should have at least system databases
         assert result["count"] > 0, "Should have at least system databases"
-        
+
         database = result["databases"][0]
         required_fields = ["database", "catalog", "schema"]
         for field in required_fields:
@@ -120,7 +121,7 @@ class TestDatabricksIntegration:
         """Test executing a simple query against real Databricks workspace."""
         # Use a simple system query that should work in most workspaces
         result = await server.execute_query(query="SELECT 1 as test_column")
-        
+
         # Should return successful result
         if "error" not in result:
             assert "query" in result
@@ -140,12 +141,12 @@ class TestDatabricksIntegration:
         write_queries = [
             "CREATE TABLE test_table (id INT)",
             "INSERT INTO test_table VALUES (1)",
-            "DELETE FROM test_table WHERE id = 1"
+            "DELETE FROM test_table WHERE id = 1",
         ]
-        
+
         for query in write_queries:
             result = await server.execute_query(query=query)
-            
+
             # Should be blocked by read-only mode
             assert "error" in result
             assert "read-only mode" in result["error"].lower()
@@ -155,25 +156,25 @@ class TestDatabricksIntegration:
         """Test database filtering functionality."""
         # Get all databases first
         all_databases = await server.list_databases()
-        
+
         if all_databases["count"] > 1:
             # Test with pattern that should match subset
             first_db = all_databases["databases"][0]["database"]
             catalog, schema = first_db.split(".", 1)
-            
+
             # Update server config to filter by specific catalog
             server.config_data["allowed_databases"] = catalog + ".*"
-            
+
             filtered_result = await server.list_databases()
-            
+
             # Should have fewer or equal databases
             assert filtered_result["count"] <= all_databases["count"]
-            
+
             # All returned databases should match the pattern
             for db in filtered_result["databases"]:
                 assert db["database"].startswith(catalog)
 
-    @pytest.mark.asyncio 
+    @pytest.mark.asyncio
     async def test_connection_health_integration(self, server):
         """Test that connection health check works."""
         try:
@@ -190,11 +191,11 @@ class TestDatabricksIntegration:
         # Test invalid query
         result = await server.execute_query(query="INVALID SQL SYNTAX")
         assert "error" in result
-        
+
         # Test invalid cluster ID
         result = await server.get_cluster_info(cluster_id="invalid-cluster-id")
         assert "error" in result
-        
+
         # Test invalid warehouse ID
         result = await server.get_warehouse_info(warehouse_id="invalid-warehouse-id")
         assert "error" in result
@@ -203,7 +204,9 @@ class TestDatabricksIntegration:
 if __name__ == "__main__":
     # Check if integration testing is enabled
     if not os.getenv("DATABRICKS_INTEGRATION_TEST", "").lower() == "true":
-        print("Integration tests disabled. Set DATABRICKS_INTEGRATION_TEST=true to enable.")
+        print(
+            "Integration tests disabled. Set DATABRICKS_INTEGRATION_TEST=true to enable."
+        )
         print("Also set DATABRICKS_HOST and DATABRICKS_TOKEN environment variables.")
     else:
         pytest.main([__file__, "-v"])
