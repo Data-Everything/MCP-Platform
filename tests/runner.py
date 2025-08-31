@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from mcp_platform.utils.sh_compat import run as subprocess_run, CalledProcessError, TimeoutExpired
+from mcp_platform.utils.sh_compat import TimeoutExpired
+from mcp_platform.utils.sh_compat import run as subprocess_run
 
 
 class TestRunner:

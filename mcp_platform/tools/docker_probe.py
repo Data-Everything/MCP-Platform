@@ -5,16 +5,22 @@ Docker probe for discovering MCP server tools from Docker images.
 import asyncio
 import logging
 import socket
-from mcp_platform.utils.sh_compat import run as subprocess_run, CalledProcessError, TimeoutExpired
 import time
 from typing import Any, Dict, List, Optional
 
 import requests
-from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
-                      wait_fixed)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from .base_probe import (CONTAINER_PORT_RANGE, DISCOVERY_RETRIES,
-                         DISCOVERY_RETRY_SLEEP, DISCOVERY_TIMEOUT, BaseProbe)
+from mcp_platform.utils.sh_compat import CalledProcessError, TimeoutExpired
+from mcp_platform.utils.sh_compat import run as subprocess_run
+
+from .base_probe import (
+    CONTAINER_PORT_RANGE,
+    DISCOVERY_RETRIES,
+    DISCOVERY_RETRY_SLEEP,
+    DISCOVERY_TIMEOUT,
+    BaseProbe,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +95,7 @@ class DockerProbe(BaseProbe):
     @retry(
         stop=stop_after_attempt(DISCOVERY_RETRIES),
         wait=wait_fixed(DISCOVERY_RETRY_SLEEP),
-        retry=retry_if_exception_type(
-            (TimeoutExpired, CalledProcessError, OSError)
-        ),
+        retry=retry_if_exception_type((TimeoutExpired, CalledProcessError, OSError)),
         reraise=True,
     )
     def _try_mcp_stdio_discovery(
@@ -122,9 +126,7 @@ class DockerProbe(BaseProbe):
     @retry(
         stop=stop_after_attempt(DISCOVERY_RETRIES),
         wait=wait_fixed(DISCOVERY_RETRY_SLEEP),
-        retry=retry_if_exception_type(
-            (TimeoutExpired, CalledProcessError, OSError)
-        ),
+        retry=retry_if_exception_type((TimeoutExpired, CalledProcessError, OSError)),
         reraise=True,
     )
     def _try_http_discovery(
