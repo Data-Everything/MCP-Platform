@@ -14,9 +14,16 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import snowflake.connector
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
+try:
+    import snowflake.connector
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.serialization import load_pem_private_key
+except ImportError:
+    # Allow import for testing without dependencies
+    snowflake = None
+    serialization = None
+    load_pem_private_key = None
+
 from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -108,14 +115,18 @@ class SnowflakeMCPServer:
             self.logger.error("Invalid %s filter pattern '%s': %s", filter_type, pattern, str(e))
             return None
 
-    def _get_connection(self) -> snowflake.connector.SnowflakeConnection:
+    def _get_connection(self) -> 'snowflake.connector.SnowflakeConnection':
         """Get or create a Snowflake connection."""
+        if snowflake is None:
+            raise ImportError("snowflake-connector-python is required but not installed")
         if self.connection is None or self.connection.is_closed():
             self.connection = self._create_connection()
         return self.connection
 
-    def _create_connection(self) -> snowflake.connector.SnowflakeConnection:
+    def _create_connection(self) -> 'snowflake.connector.SnowflakeConnection':
         """Create a new Snowflake connection with configured authentication."""
+        if snowflake is None:
+            raise ImportError("snowflake-connector-python is required but not installed")
         conn_params = {
             "account": self.config.get_snowflake_account(),
             "user": self.config.get_snowflake_user(),
@@ -175,6 +186,9 @@ class SnowflakeMCPServer:
         """Load and validate RSA private key for key pair authentication."""
         if not private_key_data:
             raise ValueError("Private key is required for snowflake_jwt authentication")
+        
+        if load_pem_private_key is None:
+            raise ImportError("cryptography library is required for key pair authentication")
 
         # Check if it's a file path
         if private_key_data.startswith("/") or private_key_data.startswith("./"):
