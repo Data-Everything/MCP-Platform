@@ -12,6 +12,8 @@ from unittest.mock import Mock, call, patch
 import pytest
 import requests
 
+from mcp_platform.utils.sh_compat import CalledProcessError, TimeoutExpired
+
 pytestmark = pytest.mark.unit
 
 from mcp_platform.tools.docker_probe import DockerProbe
@@ -29,7 +31,7 @@ class TestDockerProbe:
         assert isinstance(self.probe, DockerProbe)
         assert hasattr(self.probe, "mcp_client")
 
-    @patch("subprocess.run")
+    @patch("mcp_platform.tools.docker_probe.subprocess_run")
     def test_cleanup_container_success(self, mock_run):
         """Test successful container cleanup."""
         mock_run.return_value = Mock(returncode=0)
@@ -43,25 +45,25 @@ class TestDockerProbe:
         # Verify subprocess was called (may need slight delay for thread execution)
         # We can't assert the exact call immediately due to threading
 
-    @patch("subprocess.run")
+    @patch("mcp_platform.tools.docker_probe.subprocess_run")
     def test_cleanup_container_timeout(self, mock_run):
         """Test container cleanup with timeout."""
-        mock_run.side_effect = subprocess.TimeoutExpired("docker", 10)
+        mock_run.side_effect = TimeoutExpired("docker", 10)
 
         with patch.object(self.probe, "_background_cleanup") as mock_bg_cleanup:
             self.probe._cleanup_container("test-container")
             time.sleep(0.1)  # Allow thread to execute
 
-    @patch("subprocess.run")
+    @patch("mcp_platform.tools.docker_probe.subprocess_run")
     def test_cleanup_container_failure(self, mock_run):
         """Test container cleanup failure."""
-        mock_run.side_effect = subprocess.CalledProcessError(1, "docker")
+        mock_run.side_effect = CalledProcessError(1, "docker")
 
         # Should not raise exception, just log
         self.probe._cleanup_container("test-container")
         time.sleep(0.1)
 
-    @patch("subprocess.run")
+    @patch("mcp_platform.tools.docker_probe.subprocess_run")
     def test_background_cleanup_success(self, mock_run):
         """Test successful background cleanup."""
         mock_run.return_value = Mock(returncode=0)
@@ -76,14 +78,14 @@ class TestDockerProbe:
             check=False,
         )
 
-    @patch("subprocess.run")
+    @patch("mcp_platform.tools.docker_probe.subprocess_run")
     @patch("time.sleep")
     def test_background_cleanup_retries(self, mock_sleep, mock_run):
         """Test background cleanup with retries."""
         # First two attempts fail, third succeeds
         mock_run.side_effect = [
-            subprocess.CalledProcessError(1, "docker"),
-            subprocess.TimeoutExpired("docker", 30),
+            CalledProcessError(1, "docker"),
+            TimeoutExpired("docker", 30),
             Mock(returncode=0),
         ]
 
@@ -93,11 +95,11 @@ class TestDockerProbe:
         # Verify exponential backoff
         mock_sleep.assert_has_calls([call(1), call(2)])
 
-    @patch("subprocess.run")
+    @patch("mcp_platform.tools.docker_probe.subprocess_run")
     @patch("time.sleep")
     def test_background_cleanup_max_retries_exceeded(self, mock_sleep, mock_run):
         """Test background cleanup when max retries exceeded."""
-        mock_run.side_effect = subprocess.CalledProcessError(1, "docker")
+        mock_run.side_effect = CalledProcessError(1, "docker")
 
         self.probe._background_cleanup("test-container", max_retries=2)
 

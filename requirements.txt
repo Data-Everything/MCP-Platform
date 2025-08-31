@@ -8,3 +8,4 @@ aiohttp>=3.8.0
 typer>=0.16.0
 kubernetes>=33.1.0
 tenacity>=9.1.2
+sh==2.2.2

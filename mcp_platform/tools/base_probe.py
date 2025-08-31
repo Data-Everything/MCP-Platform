@@ -625,7 +625,7 @@ class BaseProbe(ABC):
         """
         try:
             import socket
-            import subprocess
+            import subprocess  # Keep for Popen usage
             import time
 
             deployment_name = deployment_info.get("name") or deployment_info.get("id")

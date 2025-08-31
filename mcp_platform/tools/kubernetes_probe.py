@@ -5,17 +5,19 @@ Kubernetes probe for discovering MCP server tools from Kubernetes pods.
 import asyncio
 import json
 import logging
-import subprocess
 import time
 from typing import Any, Dict, List, Optional
 
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
-from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
-                      wait_fixed)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from .base_probe import (DISCOVERY_RETRIES, DISCOVERY_RETRY_SLEEP,
-                         DISCOVERY_TIMEOUT, BaseProbe)
+from .base_probe import (
+    DISCOVERY_RETRIES,
+    DISCOVERY_RETRY_SLEEP,
+    DISCOVERY_TIMEOUT,
+    BaseProbe,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -646,7 +648,7 @@ class KubernetesProbe(BaseProbe):
             logger.debug(f"MCP input: {mcp_input}")
 
             # Execute kubectl with the MCP input
-            result = subprocess.run(
+            result = subprocess_run(
                 kubectl_cmd, input=mcp_input, capture_output=True, text=True, timeout=30
             )
 
