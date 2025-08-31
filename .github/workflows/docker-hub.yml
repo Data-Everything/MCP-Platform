@@ -148,6 +148,7 @@ jobs:
         if: steps.check-tests.outputs.has-tests == 'true'
         run: |
           cd mcp_platform/template/templates/${{ matrix.template }}
+          pip install -r requirements.txt || true
           python -m pytest tests/ -v --tb=short -m "not integration" \
           --cov-fail-under=5 || if [ $? -eq 5 ]; then \
           echo "✅ No tests collected - treating as pass"; exit 0; else exit $?; fi
@@ -156,7 +157,8 @@ jobs:
       - name: Run template integration tests
         if: steps.check-tests.outputs.has-tests == 'true'
         run: |
-          cd templmcp_platform/template/templatesates/${{ matrix.template }}
+          cd mcp_platform/template/templates/${{ matrix.template }}
+          pip install -r requirements.txt || true
           python -m pytest tests/ -v --tb=short -m integration --cov-fail-under=5
         timeout-minutes: 15
         continue-on-error: true
