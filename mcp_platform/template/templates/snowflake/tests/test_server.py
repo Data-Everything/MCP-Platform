@@ -20,16 +20,16 @@ mock_snowflake = Mock()
 mock_snowflake.connector = Mock()
 
 # Mock the modules
-sys.modules['fastmcp'] = mock_fastmcp
-sys.modules['snowflake'] = mock_snowflake
-sys.modules['snowflake.connector'] = mock_snowflake.connector
-sys.modules['starlette'] = Mock()
-sys.modules['starlette.requests'] = Mock()
-sys.modules['starlette.responses'] = Mock()
-sys.modules['cryptography'] = Mock()
-sys.modules['cryptography.hazmat'] = Mock()
-sys.modules['cryptography.hazmat.primitives'] = Mock()
-sys.modules['cryptography.hazmat.primitives.serialization'] = Mock()
+sys.modules["fastmcp"] = mock_fastmcp
+sys.modules["snowflake"] = mock_snowflake
+sys.modules["snowflake.connector"] = mock_snowflake.connector
+sys.modules["starlette"] = Mock()
+sys.modules["starlette.requests"] = Mock()
+sys.modules["starlette.responses"] = Mock()
+sys.modules["cryptography"] = Mock()
+sys.modules["cryptography.hazmat"] = Mock()
+sys.modules["cryptography.hazmat.primitives"] = Mock()
+sys.modules["cryptography.hazmat.primitives.serialization"] = Mock()
 
 # Import the server class
 sys.path.append(str(Path(__file__).parent.parent))
@@ -103,15 +103,16 @@ class TestSnowflakeMCPServer:
         mock_fastmcp = Mock()
         mock_mcp_instance = Mock()
         mock_fastmcp.return_value = mock_mcp_instance
-        
+
         # Mock the tool decorator
         def mock_tool(name=None, description=None):
             def decorator(func):
                 return func
+
             return decorator
-        
+
         mock_mcp_instance.tool = mock_tool
-        
+
         with patch("server.FastMCP", mock_fastmcp):
             yield mock_fastmcp, mock_mcp_instance
 
@@ -382,30 +383,35 @@ class TestSnowflakeMCPServer:
         with patch.dict(os.environ, {}, clear=True):
             # Reset the mock cursor completely for this test
             fresh_cursor = Mock()
-            fresh_cursor.fetchall.return_value = [(1, "John", "Doe"), (2, "Jane", "Smith")]
+            fresh_cursor.fetchall.return_value = [
+                (1, "John", "Doe"),
+                (2, "Jane", "Smith"),
+            ]
             fresh_cursor.description = [("id",), ("first_name",), ("last_name",)]
             fresh_cursor.execute = Mock()
             fresh_cursor.close = Mock()
-            
+
             # Make sure connection.cursor() returns our fresh cursor
             mock_connection.cursor.return_value = fresh_cursor
-            
+
             server = SnowflakeMCPServer(config_dict=basic_config)
             result = server.execute_query("SELECT * FROM users", limit=10)
 
             print(f"Debug: result = {result}")
             print(f"Debug: result['rows'] = {result.get('rows', 'NOT_FOUND')}")
-            if 'rows' in result:
+            if "rows" in result:
                 print(f"Debug: len(result['rows']) = {len(result.get('rows', []))}")
-            
+
             # Check for error case first
-            if 'error' in result:
-                print(f"Note: Test had query error (expected in some mock scenarios): {result['error']}")
+            if "error" in result:
+                print(
+                    f"Note: Test had query error (expected in some mock scenarios): {result['error']}"
+                )
                 # For now, just ensure basic structure exists when there's an error
                 assert "error" in result
                 assert "query" in result
                 return  # Skip the rest of the assertions for error case
-                
+
             assert "query" in result
             assert "columns" in result
             assert "rows" in result

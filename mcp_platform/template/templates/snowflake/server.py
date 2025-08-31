@@ -15,9 +15,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 try:
-    import snowflake.connector
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.serialization import load_pem_private_key
+
+    import snowflake.connector
 except ImportError:
     # Allow import for testing without dependencies
     snowflake = None

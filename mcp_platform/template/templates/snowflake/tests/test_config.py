@@ -24,7 +24,15 @@ class TestSnowflakeServerConfig:
 
     def test_default_configuration(self):
         """Test default configuration values."""
-        with patch.dict(os.environ, {"SNOWFLAKE_ACCOUNT": "testaccount"}, clear=True):
+        with patch.dict(
+            os.environ,
+            {
+                "SNOWFLAKE_ACCOUNT": "testaccount",
+                "SNOWFLAKE_USER": "testuser",
+                "SNOWFLAKE_PASSWORD": "testpass",
+            },
+            clear=True,
+        ):
             config = SnowflakeServerConfig()
 
             assert config.get_snowflake_account() == "testaccount"

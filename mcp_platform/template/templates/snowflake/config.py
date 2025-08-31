@@ -78,7 +78,7 @@ class SnowflakeServerConfig:
                     env_value,
                 )
 
-        # Add override values to config_dict so they get processed by _process_nested_config
+        # Add override values to config_dict so they get processed
         if override_dict:
             self.config_dict.update(override_dict)
             self.logger.info(
@@ -95,7 +95,8 @@ class SnowflakeServerConfig:
         # Validate required Snowflake account
         if not self.get_snowflake_account():
             raise ValueError(
-                "Snowflake account is required. Set SNOWFLAKE_ACCOUNT environment variable."
+                "Snowflake account is required. "
+                "Set SNOWFLAKE_ACCOUNT environment variable."
             )
 
         # Validate authentication method and required credentials
@@ -107,11 +108,14 @@ class SnowflakeServerConfig:
                 )
         elif auth_method == "oauth":
             if not self.get_snowflake_oauth_token():
-                raise ValueError("OAuth token is required for 'oauth' authentication.")
+                raise ValueError(
+                    "OAuth token is required for 'oauth' authentication."
+                )
         elif auth_method == "snowflake_jwt":
             if not (self.get_snowflake_user() and self.get_snowflake_private_key()):
                 raise ValueError(
-                    "Username and private key are required for 'snowflake_jwt' authentication."
+                    "Username and private key are required for "
+                    "'snowflake_jwt' authentication."
                 )
 
         # Validate filter patterns if provided
@@ -295,7 +299,7 @@ class SnowflakeServerConfig:
         return parts[0].lower() in config_prefixes
 
     def _coerce_value_type(self, key: str, value: Any) -> Any:
-        """Attempt to coerce value to the appropriate type based on template.json schema."""
+        """Attempt to coerce value to appropriate type based on template.json."""
         if not hasattr(self, "template_data") or not self.template_data:
             return value
 
@@ -309,7 +313,8 @@ class SnowflakeServerConfig:
 
         except (ValueError, json.JSONDecodeError) as e:
             self.logger.warning(
-                "Failed to coerce value '%s' for key '%s' to type '%s': %s. Using original value.",
+                "Failed to coerce value '%s' for key '%s' to type '%s': %s. "
+                "Using original value.",
                 value,
                 key,
                 prop_config.get("type", "unknown"),
@@ -423,7 +428,9 @@ class SnowflakeServerConfig:
         env_value = os.getenv(env_var)
         if env_value is not None:
             self.logger.debug("Using environment variable '%s': %s", env_var, env_value)
-            return env_value
+            # Apply type coercion to environment variables
+            coerced_value = self._coerce_value_type(key, env_value)
+            return coerced_value
 
         # Return default
         self.logger.debug("Using default value for '%s': %s", key, default)
@@ -466,12 +473,14 @@ class SnowflakeServerConfig:
             # Load default values from environment or template
             env_var = value.get("env_mapping", key.upper())
             default_value = value.get("default", None)
-            properties_dict[key] = self._get_config(key, env_var, default_value)
+            properties_dict[key] = self._get_config(
+                key, env_var, default_value
+            )
 
         return properties_dict
 
     def get_template_data(self) -> Dict[str, Any]:
-        """Get the full template data, potentially modified by double underscore notation."""
+        """Get template data, potentially modified by double underscore notation."""
         # Start with base template data
         template_data = self.template_data.copy()
 
