@@ -10,12 +10,13 @@ This script:
 """
 
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 from typing import Dict
 
 import yaml
+
+from mcp_platform.utils.sh_compat import run as subprocess_run, CalledProcessError
 
 # Import the TemplateDiscovery utility
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -314,12 +315,12 @@ def build_docs():
     print("🏗️  Building documentation with MkDocs...")
 
     try:
-        result = subprocess.run(
+        result = subprocess_run(
             ["mkdocs", "build"], check=True, capture_output=True, text=True
         )
         print("✅ Documentation built successfully")
         return True
-    except subprocess.CalledProcessError as e:
+    except CalledProcessError as e:
         print(f"❌ Documentation build failed: {e}")
         print(f"Stdout: {e.stdout}")
         print(f"Stderr: {e.stderr}")

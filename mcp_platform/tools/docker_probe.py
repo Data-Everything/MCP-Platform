@@ -5,7 +5,7 @@ Docker probe for discovering MCP server tools from Docker images.
 import asyncio
 import logging
 import socket
-import subprocess
+from mcp_platform.utils.sh_compat import run as subprocess_run, CalledProcessError, TimeoutExpired
 import time
 from typing import Any, Dict, List, Optional
 
@@ -32,7 +32,7 @@ class DockerProbe(BaseProbe):
         for attempt in range(max_retries):
             try:
                 time.sleep(2**attempt)  # Exponential backoff: 1s, 2s, 4s
-                subprocess.run(
+                subprocess_run(
                     ["docker", "rm", "-f", container_name],
                     capture_output=True,
                     text=True,
@@ -43,7 +43,7 @@ class DockerProbe(BaseProbe):
                     f"Background cleanup successful for {container_name} on attempt {attempt + 1}"
                 )
                 return
-            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+            except (TimeoutExpired, CalledProcessError) as e:
                 logger.debug(
                     f"Background cleanup attempt {attempt + 1} failed for {container_name}: {e}"
                 )
@@ -82,7 +82,7 @@ class DockerProbe(BaseProbe):
             # Fallback to HTTP probe (for non-standard MCP servers)
             return self._try_http_discovery(image_name, timeout)
 
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError) as e:
+        except (TimeoutExpired, CalledProcessError, OSError) as e:
             logger.error("Failed to discover tools from image %s: %s", image_name, e)
             return None
 
@@ -90,7 +90,7 @@ class DockerProbe(BaseProbe):
         stop=stop_after_attempt(DISCOVERY_RETRIES),
         wait=wait_fixed(DISCOVERY_RETRY_SLEEP),
         retry=retry_if_exception_type(
-            (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError)
+            (TimeoutExpired, CalledProcessError, OSError)
         ),
         reraise=True,
     )
@@ -115,7 +115,7 @@ class DockerProbe(BaseProbe):
 
             return result
 
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError) as e:
+        except (TimeoutExpired, CalledProcessError, OSError) as e:
             logger.debug("MCP stdio discovery failed for %s: %s", image_name, e)
             return None
 
@@ -123,7 +123,7 @@ class DockerProbe(BaseProbe):
         stop=stop_after_attempt(DISCOVERY_RETRIES),
         wait=wait_fixed(DISCOVERY_RETRY_SLEEP),
         retry=retry_if_exception_type(
-            (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError)
+            (TimeoutExpired, CalledProcessError, OSError)
         ),
         reraise=True,
     )
@@ -166,7 +166,7 @@ class DockerProbe(BaseProbe):
 
             return None
 
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError) as e:
+        except (TimeoutExpired, CalledProcessError, OSError) as e:
             logger.debug("HTTP discovery failed for %s: %s", image_name, e)
             return None
 
@@ -202,7 +202,7 @@ class DockerProbe(BaseProbe):
                 image_name,
             ]
 
-            result = subprocess.run(
+            result = subprocess_run(
                 cmd, capture_output=True, text=True, timeout=30, check=False
             )
 
@@ -215,10 +215,10 @@ class DockerProbe(BaseProbe):
                 )
                 return False
 
-        except subprocess.TimeoutExpired:
+        except TimeoutExpired:
             logger.error("Timeout starting container %s", container_name)
             return False
-        except (subprocess.CalledProcessError, OSError) as e:
+        except (CalledProcessError, OSError) as e:
             logger.error("Error starting container %s: %s", container_name, e)
             return False
 
@@ -285,7 +285,7 @@ class DockerProbe(BaseProbe):
     def _is_container_running(self, container_name: str) -> bool:
         """Check if container is still running."""
         try:
-            result = subprocess.run(
+            result = subprocess_run(
                 ["docker", "inspect", "--format={{.State.Running}}", container_name],
                 capture_output=True,
                 text=True,
@@ -294,14 +294,14 @@ class DockerProbe(BaseProbe):
             )
             return result.stdout.strip() == "true"
 
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        except (CalledProcessError, TimeoutExpired):
             return False
 
     def _cleanup_container(self, container_name: str) -> None:
         """Clean up container synchronously, with background fallback on timeout/error."""
         try:
             # Stop container with short timeout
-            subprocess.run(
+            subprocess_run(
                 ["docker", "stop", container_name],
                 capture_output=True,
                 timeout=5,  # Reduced timeout
@@ -309,7 +309,7 @@ class DockerProbe(BaseProbe):
             )
 
             # Try to remove container synchronously first
-            subprocess.run(
+            subprocess_run(
                 ["docker", "rm", "-f", container_name],
                 capture_output=True,
                 timeout=30,
@@ -317,13 +317,13 @@ class DockerProbe(BaseProbe):
             )
             logger.debug("Successfully cleaned up container %s", container_name)
 
-        except subprocess.TimeoutExpired:
+        except TimeoutExpired:
             logger.warning(
                 "Timeout cleaning up container %s, scheduling background cleanup",
                 container_name,
             )
             self._background_cleanup(container_name)
-        except (subprocess.CalledProcessError, OSError) as e:
+        except (CalledProcessError, OSError) as e:
             logger.warning(
                 "Error cleaning up container %s: %s, scheduling background cleanup",
                 container_name,

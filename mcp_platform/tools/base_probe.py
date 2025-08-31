@@ -625,7 +625,8 @@ class BaseProbe(ABC):
         """
         try:
             import socket
-            import subprocess
+            from mcp_platform.utils.sh_compat import run as subprocess_run, CalledProcessError, TimeoutExpired
+            import subprocess  # Keep for Popen usage
             import time
 
             deployment_name = deployment_info.get("name") or deployment_info.get("id")

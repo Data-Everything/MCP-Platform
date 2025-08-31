@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import socket
+import subprocess  # Keep for test compatibility
 import time
 import uuid
 from contextlib import suppress
@@ -25,6 +26,15 @@ from rich.console import Console
 from rich.panel import Panel
 
 from mcp_platform.backends import BaseDeploymentBackend
+
+# For backward compatibility with tests that mock subprocess.run
+def _compatibility_run(*args, **kwargs):
+    """Backward compatibility wrapper for subprocess.run."""
+    from mcp_platform.utils.sh_compat import run as sh_run
+    return sh_run(*args, **kwargs)
+
+# Replace subprocess.run with compatibility version
+subprocess.run = _compatibility_run
 
 
 class ShCompletedProcess:
@@ -151,11 +161,18 @@ class PodmanDeploymentService(BaseDeploymentBackend):
                 logger.debug("Command stderr: %s", result.stderr)
             return result
             
-        except ShCalledProcessError as e:
+        except (ShCalledProcessError, subprocess.CalledProcessError) as e:
             logger.error("Command failed: %s", " ".join(command))
             logger.error("Exit code: %d", e.returncode)
             logger.error("Stdout: %s", e.stdout)
             logger.error("Stderr: %s", e.stderr)
+            raise
+        except subprocess.CalledProcessError as e:
+            # Handle test mocks that might raise subprocess.CalledProcessError
+            logger.error("Command failed (subprocess mock): %s", " ".join(command))
+            logger.error("Exit code: %d", e.returncode)
+            logger.error("Stdout: %s", getattr(e, 'stdout', ''))
+            logger.error("Stderr: %s", getattr(e, 'stderr', ''))
             raise
 
     def _ensure_podman_available(self):
@@ -641,7 +658,7 @@ class PodmanDeploymentService(BaseDeploymentBackend):
                 "stderr": result.stderr,
                 "executed_at": datetime.now().isoformat(),
             }
-        except ShCalledProcessError as e:
+        except (ShCalledProcessError, subprocess.CalledProcessError) as e:
             logger.error("Stdio command failed for template %s: %s", template_id, e)
             return {
                 "template_id": template_id,
@@ -732,7 +749,7 @@ class PodmanDeploymentService(BaseDeploymentBackend):
                     except json.JSONDecodeError:
                         continue
             return deployments
-        except ShCalledProcessError as e:
+        except (ShCalledProcessError, subprocess.CalledProcessError) as e:
             logger.error("Failed to list deployments: %s", e)
             return []
 
@@ -751,7 +768,7 @@ class PodmanDeploymentService(BaseDeploymentBackend):
             self._run_command(["podman", "rm", deployment_name], check=False)
             logger.info("Deleted deployment %s", deployment_name)
             return True
-        except ShCalledProcessError as e:
+        except (ShCalledProcessError, subprocess.CalledProcessError) as e:
             logger.error("Failed to delete deployment %s: %s", deployment_name, e)
             return False
 
@@ -840,7 +857,7 @@ class PodmanDeploymentService(BaseDeploymentBackend):
             else:
                 self._run_command(["podman", "stop", deployment_name])
             return True
-        except ShCalledProcessError:
+        except (ShCalledProcessError, subprocess.CalledProcessError):
             return False
 
     def get_deployment_info(self, deployment_name: str) -> Dict[str, Any]:

@@ -5,10 +5,11 @@ Provides tools for running tests with coverage, generating reports,
 and organizing test execution across different test categories.
 """
 
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from mcp_platform.utils.sh_compat import run as subprocess_run, CalledProcessError, TimeoutExpired
 
 
 class TestRunner:
@@ -211,7 +212,7 @@ class TestRunner:
             Path to the generated HTML coverage report
         """
         # Run coverage
-        subprocess.run(
+        subprocess_run(
             [
                 sys.executable,
                 "-m",
@@ -254,7 +255,7 @@ class TestRunner:
         print(f"Command: {' '.join(cmd)}")
 
         try:
-            result = subprocess.run(
+            result = subprocess_run(
                 cmd,
                 cwd=self.root_dir,
                 capture_output=True,
@@ -271,7 +272,7 @@ class TestRunner:
                 "command": cmd,
             }
 
-        except subprocess.TimeoutExpired:
+        except TimeoutExpired:
             return {
                 "test_type": test_type,
                 "success": False,

@@ -64,7 +64,7 @@ class SubProcessRunDummyResult:
 
     def check_returncode(self):
         if self.returncode != 0:
-            raise RuntimeError(
-                f"Command '{self.args}' returned non-zero exit status "
-                f"{self.returncode}."
+            from mcp_platform.utils.sh_compat import ShCalledProcessError
+            raise ShCalledProcessError(
+                self.returncode, self.args, self.stdout, self.stderr
             )

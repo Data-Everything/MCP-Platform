@@ -5,7 +5,7 @@ Kubernetes probe for discovering MCP server tools from Kubernetes pods.
 import asyncio
 import json
 import logging
-import subprocess
+from mcp_platform.utils.sh_compat import run as subprocess_run, CalledProcessError, TimeoutExpired
 import time
 from typing import Any, Dict, List, Optional
 
@@ -646,7 +646,7 @@ class KubernetesProbe(BaseProbe):
             logger.debug(f"MCP input: {mcp_input}")
 
             # Execute kubectl with the MCP input
-            result = subprocess.run(
+            result = subprocess_run(
                 kubectl_cmd, input=mcp_input, capture_output=True, text=True, timeout=30
             )
 
