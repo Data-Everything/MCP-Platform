@@ -8,14 +8,30 @@ and connection management using mocked Snowflake connector.
 
 import os
 import re
-
-# Import the server class
 import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
+# Mock external dependencies before importing the server
+mock_fastmcp = Mock()
+mock_snowflake = Mock()
+mock_snowflake.connector = Mock()
+
+# Mock the modules
+sys.modules['fastmcp'] = mock_fastmcp
+sys.modules['snowflake'] = mock_snowflake
+sys.modules['snowflake.connector'] = mock_snowflake.connector
+sys.modules['starlette'] = Mock()
+sys.modules['starlette.requests'] = Mock()
+sys.modules['starlette.responses'] = Mock()
+sys.modules['cryptography'] = Mock()
+sys.modules['cryptography.hazmat'] = Mock()
+sys.modules['cryptography.hazmat.primitives'] = Mock()
+sys.modules['cryptography.hazmat.primitives.serialization'] = Mock()
+
+# Import the server class
 sys.path.append(str(Path(__file__).parent.parent))
 from server import SnowflakeMCPServer
 
@@ -31,24 +47,42 @@ class TestSnowflakeMCPServer:
         mock_connector = Mock()
         mock_connection = Mock()
         mock_cursor = Mock()
-        
-        # Set up mock cursor with proper methods
+
+        # Set up mock cursor with proper methods and realistic return values
         mock_cursor.execute = Mock()
         mock_cursor.fetchone = Mock()
         mock_cursor.fetchall = Mock()
-        mock_cursor.description = []
+        mock_cursor.fetchmany = Mock()
         mock_cursor.close = Mock()
-        
+
+        # Default fetchall response for SHOW DATABASES (must be actual list, not Mock)
+        default_databases = [
+            ("2023-01-01 00:00:00", "PROD_DB", "owner", "Production database"),
+            ("2023-01-01 00:00:00", "DEV_DB", "owner", "Development database"),
+            ("2023-01-01 00:00:00", "TEST_DB", "owner", "Test database"),
+        ]
+        mock_cursor.fetchall.return_value = default_databases
+        mock_cursor.fetchmany.return_value = default_databases[:1]  # Return first row
+        mock_cursor.description = [
+            ("created_on",),
+            ("name",),
+            ("owner",),
+            ("comment",),
+        ]
+
         # Set up mock connection
         mock_connection.cursor.return_value = mock_cursor
         mock_connection.is_closed.return_value = False
         mock_connection.close = Mock()
-        
+
         # Set up mock connector
         mock_connector.connect.return_value = mock_connection
         mock_snowflake.connector = mock_connector
-        
-        with patch.dict(sys.modules, {'snowflake': mock_snowflake, 'snowflake.connector': mock_connector}):
+
+        with patch.dict(
+            sys.modules,
+            {"snowflake": mock_snowflake, "snowflake.connector": mock_connector},
+        ):
             with patch("server.snowflake", mock_snowflake):
                 with patch("server.snowflake.connector", mock_connector):
                     yield mock_connector, mock_connection, mock_cursor
@@ -62,6 +96,24 @@ class TestSnowflakeMCPServer:
             "snowflake_password": "testpass",
             "snowflake_warehouse": "TEST_WH",
         }
+
+    @pytest.fixture
+    def mock_fastmcp(self):
+        """Mock FastMCP for testing."""
+        mock_fastmcp = Mock()
+        mock_mcp_instance = Mock()
+        mock_fastmcp.return_value = mock_mcp_instance
+        
+        # Mock the tool decorator
+        def mock_tool(name=None, description=None):
+            def decorator(func):
+                return func
+            return decorator
+        
+        mock_mcp_instance.tool = mock_tool
+        
+        with patch("server.FastMCP", mock_fastmcp):
+            yield mock_fastmcp, mock_mcp_instance
 
     def test_server_initialization(self, mock_snowflake_connector, basic_config):
         """Test server initialization with basic configuration."""
@@ -246,7 +298,7 @@ class TestSnowflakeMCPServer:
         """Test list_databases functionality."""
         mock_connector, mock_connection, mock_cursor = mock_snowflake_connector
 
-        # Mock cursor results for SHOW DATABASES
+        # Mock cursor results for SHOW DATABASES with actual list data
         mock_cursor.fetchall.return_value = [
             ("2023-01-01", "PROD_DB", "owner", "comment"),
             ("2023-01-01", "DEV_DB", "owner", "comment"),

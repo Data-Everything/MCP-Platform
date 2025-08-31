@@ -613,49 +613,47 @@ class SnowflakeMCPServer:
                 self.logger.info("Snowflake connection closed")
 
 
-# Create the server instance
-server = SnowflakeMCPServer(config_dict={})
+# Create the server instance only when running as main script
+if __name__ == "__main__":
+    server = SnowflakeMCPServer(config_dict={})
 
+    @server.mcp.custom_route(path="/health", methods=["GET"])
+    async def health_check(request: Request):
+        """
+        Health check endpoint to verify server status.
+        """
+        try:
+            # Try to get connection info as a basic health check
+            connection_info = server.get_connection_info()
 
-@server.mcp.custom_route(path="/health", methods=["GET"])
-async def health_check(request: Request):
-    """
-    Health check endpoint to verify server status.
-    """
-    try:
-        # Try to get connection info as a basic health check
-        connection_info = server.get_connection_info()
-
-        if "error" not in connection_info:
-            return JSONResponse(
-                content={
-                    "status": "healthy",
-                    "service": "snowflake-mcp-server",
-                    "version": server.template_data.get("version", "1.0.0"),
-                    "read_only": server.read_only,
-                    "account": connection_info.get("account"),
-                    "user": connection_info.get("user"),
-                }
-            )
-        else:
+            if "error" not in connection_info:
+                return JSONResponse(
+                    content={
+                        "status": "healthy",
+                        "service": "snowflake-mcp-server",
+                        "version": server.template_data.get("version", "1.0.0"),
+                        "read_only": server.read_only,
+                        "account": connection_info.get("account"),
+                        "user": connection_info.get("user"),
+                    }
+                )
+            else:
+                return JSONResponse(
+                    content={
+                        "status": "unhealthy",
+                        "service": "snowflake-mcp-server",
+                        "error": connection_info["error"],
+                    },
+                    status_code=503,
+                )
+        except Exception as e:
             return JSONResponse(
                 content={
                     "status": "unhealthy",
                     "service": "snowflake-mcp-server",
-                    "error": connection_info["error"],
+                    "error": str(e),
                 },
                 status_code=503,
             )
-    except Exception as e:
-        return JSONResponse(
-            content={
-                "status": "unhealthy",
-                "service": "snowflake-mcp-server",
-                "error": str(e),
-            },
-            status_code=503,
-        )
 
-
-if __name__ == "__main__":
     server.run()
