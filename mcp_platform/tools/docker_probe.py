@@ -10,11 +10,15 @@ import time
 from typing import Any, Dict, List, Optional
 
 import requests
-from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
-                      wait_fixed)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from .base_probe import (CONTAINER_PORT_RANGE, DISCOVERY_RETRIES,
-                         DISCOVERY_RETRY_SLEEP, DISCOVERY_TIMEOUT, BaseProbe)
+from .base_probe import (
+    CONTAINER_PORT_RANGE,
+    DISCOVERY_RETRIES,
+    DISCOVERY_RETRY_SLEEP,
+    DISCOVERY_TIMEOUT,
+    BaseProbe,
+)
 
 logger = logging.getLogger(__name__)
 

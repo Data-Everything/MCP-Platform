@@ -8,8 +8,7 @@ enabling CLI commands to show aggregate views and auto-detect backend contexts.
 import logging
 from typing import Any, Dict, List, Optional
 
-from mcp_platform.backends import (VALID_BACKENDS, BaseDeploymentBackend,
-                                   get_backend)
+from mcp_platform.backends import VALID_BACKENDS, BaseDeploymentBackend, get_backend
 from mcp_platform.core.deployment_manager import DeploymentManager
 from mcp_platform.core.template_manager import TemplateManager
 from mcp_platform.core.tool_manager import ToolManager

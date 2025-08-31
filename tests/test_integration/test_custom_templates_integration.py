@@ -17,83 +17,107 @@ class TestCustomTemplatesIntegration:
 
     def test_custom_templates_end_to_end(self):
         """Test custom templates functionality end-to-end without importing main modules."""
-        
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            
+
             # Create custom templates directory
             custom_dir = tmp_path / "custom_templates"
             custom_dir.mkdir()
-            
-            # Create builtin templates directory  
+
+            # Create builtin templates directory
             builtin_dir = tmp_path / "builtin_templates"
             builtin_dir.mkdir()
-            
+
             # Create a custom template
             custom_template_dir = custom_dir / "my-org-template"
             custom_template_dir.mkdir()
-            
+
             custom_template_json = custom_template_dir / "template.json"
-            custom_template_json.write_text(json.dumps({
-                "name": "My Organization Template",
-                "description": "Internal template for my organization",
-                "version": "1.0.0",
-                "docker_image": "myorg/mcp-server:latest",
-                "tool_discovery": "dynamic",
-                "has_image": True,
-                "origin": "internal",
-                "config_schema": {
-                    "type": "object",
-                    "properties": {
-                        "api_key": {
-                            "type": "string",
-                            "description": "API key for the service",
-                            "env_mapping": "MY_API_KEY"
-                        }
-                    },
-                    "required": ["api_key"]
-                }
-            }))
-            
+            custom_template_json.write_text(
+                json.dumps(
+                    {
+                        "name": "My Organization Template",
+                        "description": "Internal template for my organization",
+                        "version": "1.0.0",
+                        "docker_image": "myorg/mcp-server:latest",
+                        "tool_discovery": "dynamic",
+                        "has_image": True,
+                        "origin": "internal",
+                        "config_schema": {
+                            "type": "object",
+                            "properties": {
+                                "api_key": {
+                                    "type": "string",
+                                    "description": "API key for the service",
+                                    "env_mapping": "MY_API_KEY",
+                                }
+                            },
+                            "required": ["api_key"],
+                        },
+                    }
+                )
+            )
+
             # Create a builtin template with same name to test override
             builtin_template_dir = builtin_dir / "my-org-template"
             builtin_template_dir.mkdir()
-            
+
             builtin_template_json = builtin_template_dir / "template.json"
-            builtin_template_json.write_text(json.dumps({
-                "name": "Builtin Template",
-                "description": "Default builtin template",
-                "version": "0.5.0", 
-                "docker_image": "builtin/template:latest"
-            }))
-            
+            builtin_template_json.write_text(
+                json.dumps(
+                    {
+                        "name": "Builtin Template",
+                        "description": "Default builtin template",
+                        "version": "0.5.0",
+                        "docker_image": "builtin/template:latest",
+                    }
+                )
+            )
+
             # Create another builtin template
             builtin2_template_dir = builtin_dir / "builtin-only"
             builtin2_template_dir.mkdir()
-            
+
             builtin2_template_json = builtin2_template_dir / "template.json"
-            builtin2_template_json.write_text(json.dumps({
-                "name": "Builtin Only Template",
-                "description": "Only available as builtin",
-                "version": "1.0.0",
-                "docker_image": "builtin/only:latest"
-            }))
-            
+            builtin2_template_json.write_text(
+                json.dumps(
+                    {
+                        "name": "Builtin Only Template",
+                        "description": "Only available as builtin",
+                        "version": "1.0.0",
+                        "docker_image": "builtin/only:latest",
+                    }
+                )
+            )
+
             # Test the functionality by importing discovery logic
             import sys
+
             sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-            
+
             # Mock the dependencies to avoid import issues
-            with patch.dict('sys.modules', {
-                'mcp_platform.utils': type('MockUtils', (), {
-                    'get_custom_templates_dir': lambda: custom_dir,
-                    'get_all_template_directories': lambda: [custom_dir, builtin_dir],
-                    'TEMPLATES_DIR': builtin_dir
-                })()
-            }):
-                
+            with patch.dict(
+                "sys.modules",
+                {
+                    "mcp_platform.utils": type(
+                        "MockUtils",
+                        (),
+                        {
+                            "get_custom_templates_dir": lambda: custom_dir,
+                            "get_all_template_directories": lambda: [
+                                custom_dir,
+                                builtin_dir,
+                            ],
+                            "TEMPLATES_DIR": builtin_dir,
+                        },
+                    )()
+                },
+            ):
+
                 # Test basic import without full module
-                exec("""
+                exec(
+                    """
 import json
 import logging
 from pathlib import Path
@@ -204,39 +228,49 @@ assert path is not None
 assert path == custom_template_dir
 
 print("✅ All integration tests passed!")
-""", {'custom_dir': custom_dir, 'builtin_dir': builtin_dir, 'custom_template_dir': custom_template_dir})
-                
+""",
+                    {
+                        "custom_dir": custom_dir,
+                        "builtin_dir": builtin_dir,
+                        "custom_template_dir": custom_template_dir,
+                    },
+                )
+
     def test_environment_variable_integration(self):
         """Test environment variable integration."""
-        
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             custom_dir = tmp_path / "my_custom_templates"
             custom_dir.mkdir()
-            
+
             # Create a template
             template_dir = custom_dir / "env-test-template"
             template_dir.mkdir()
-            
+
             template_json = template_dir / "template.json"
-            template_json.write_text(json.dumps({
-                "name": "Environment Test Template",
-                "description": "Template loaded via environment variable",
-                "version": "1.0.0",
-                "docker_image": "envtest/template:latest"
-            }))
-            
+            template_json.write_text(
+                json.dumps(
+                    {
+                        "name": "Environment Test Template",
+                        "description": "Template loaded via environment variable",
+                        "version": "1.0.0",
+                        "docker_image": "envtest/template:latest",
+                    }
+                )
+            )
+
             # Test with environment variable
             with patch.dict(os.environ, {"MCP_CUSTOM_TEMPLATES_DIR": str(custom_dir)}):
-                
+
                 # Test environment variable detection
                 def get_custom_templates_dir():
                     custom_dir_env = os.environ.get("MCP_CUSTOM_TEMPLATES_DIR")
                     if custom_dir_env:
                         return Path(custom_dir_env).expanduser().resolve()
                     return None
-                
+
                 detected_dir = get_custom_templates_dir()
                 assert detected_dir == custom_dir
-                
+
                 print("✅ Environment variable integration test passed!")

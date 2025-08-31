@@ -5,8 +5,6 @@ Unit tests for Filesystem template.
 import json
 from pathlib import Path
 
-import pytest
-
 
 class TestFilesystemUnit:
     """Unit tests for Filesystem template."""
