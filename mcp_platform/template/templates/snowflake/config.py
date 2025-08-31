@@ -94,24 +94,30 @@ class SnowflakeServerConfig:
 
         # Validate required Snowflake account
         if not self.get_snowflake_account():
-            raise ValueError("Snowflake account is required. Set SNOWFLAKE_ACCOUNT environment variable.")
+            raise ValueError(
+                "Snowflake account is required. Set SNOWFLAKE_ACCOUNT environment variable."
+            )
 
         # Validate authentication method and required credentials
         auth_method = self.get_snowflake_authenticator()
         if auth_method == "snowflake":
             if not (self.get_snowflake_user() and self.get_snowflake_password()):
-                raise ValueError("Username and password are required for 'snowflake' authentication.")
+                raise ValueError(
+                    "Username and password are required for 'snowflake' authentication."
+                )
         elif auth_method == "oauth":
             if not self.get_snowflake_oauth_token():
                 raise ValueError("OAuth token is required for 'oauth' authentication.")
         elif auth_method == "snowflake_jwt":
             if not (self.get_snowflake_user() and self.get_snowflake_private_key()):
-                raise ValueError("Username and private key are required for 'snowflake_jwt' authentication.")
+                raise ValueError(
+                    "Username and private key are required for 'snowflake_jwt' authentication."
+                )
 
         # Validate filter patterns if provided
         for pattern_name, pattern_value in [
             ("database_filter_pattern", self.get_database_filter_pattern()),
-            ("schema_filter_pattern", self.get_schema_filter_pattern())
+            ("schema_filter_pattern", self.get_schema_filter_pattern()),
         ]:
             if pattern_value:
                 try:
@@ -119,7 +125,9 @@ class SnowflakeServerConfig:
                 except re.error as e:
                     self.logger.warning(
                         "Invalid regex pattern for %s: %s. Error: %s",
-                        pattern_name, pattern_value, str(e)
+                        pattern_name,
+                        pattern_value,
+                        str(e),
                     )
 
     def _process_nested_config(self) -> None:
@@ -241,8 +249,16 @@ class SnowflakeServerConfig:
 
         # Common template.json top-level keys
         template_structure_keys = {
-            "tools", "metadata", "servers", "capabilities", "examples",
-            "config", "volumes", "ports", "transport", "requirements",
+            "tools",
+            "metadata",
+            "servers",
+            "capabilities",
+            "examples",
+            "config",
+            "volumes",
+            "ports",
+            "transport",
+            "requirements",
         }
 
         if first_part in template_structure_keys:
@@ -262,8 +278,18 @@ class SnowflakeServerConfig:
             return False
 
         config_prefixes = {
-            "snowflake", "template", "system", "config", "app", "settings",
-            "server", "client", "service", "api", "database", "security",
+            "snowflake",
+            "template",
+            "system",
+            "config",
+            "app",
+            "settings",
+            "server",
+            "client",
+            "service",
+            "api",
+            "database",
+            "security",
         }
 
         return parts[0].lower() in config_prefixes
@@ -284,7 +310,10 @@ class SnowflakeServerConfig:
         except (ValueError, json.JSONDecodeError) as e:
             self.logger.warning(
                 "Failed to coerce value '%s' for key '%s' to type '%s': %s. Using original value.",
-                value, key, prop_config.get("type", "unknown"), str(e),
+                value,
+                key,
+                prop_config.get("type", "unknown"),
+                str(e),
             )
             return value
 
@@ -527,7 +556,8 @@ class SnowflakeServerConfig:
         if not isinstance(current, list):
             self.logger.warning(
                 "Trying to index non-list type %s with index %s",
-                type(current).__name__, index,
+                type(current).__name__,
+                index,
             )
             return None
 
@@ -578,7 +608,9 @@ class SnowflakeServerConfig:
 
     def get_snowflake_authenticator(self) -> str:
         """Get Snowflake authentication method."""
-        return self._get_config("snowflake_authenticator", "SNOWFLAKE_AUTHENTICATOR", "snowflake")
+        return self._get_config(
+            "snowflake_authenticator", "SNOWFLAKE_AUTHENTICATOR", "snowflake"
+        )
 
     def get_snowflake_oauth_token(self) -> str:
         """Get Snowflake OAuth token."""
@@ -590,7 +622,9 @@ class SnowflakeServerConfig:
 
     def get_snowflake_private_key_passphrase(self) -> str:
         """Get Snowflake private key passphrase."""
-        return self._get_config("snowflake_private_key_passphrase", "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE", "")
+        return self._get_config(
+            "snowflake_private_key_passphrase", "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE", ""
+        )
 
     def get_snowflake_warehouse(self) -> str:
         """Get default Snowflake warehouse."""
@@ -614,7 +648,9 @@ class SnowflakeServerConfig:
 
     def get_database_filter_pattern(self) -> str:
         """Get database filter pattern."""
-        return self._get_config("database_filter_pattern", "SNOWFLAKE_DATABASE_FILTER", "")
+        return self._get_config(
+            "database_filter_pattern", "SNOWFLAKE_DATABASE_FILTER", ""
+        )
 
     def get_schema_filter_pattern(self) -> str:
         """Get schema filter pattern."""
@@ -622,7 +658,9 @@ class SnowflakeServerConfig:
 
     def get_connection_timeout(self) -> int:
         """Get connection timeout in seconds."""
-        return int(self._get_config("connection_timeout", "SNOWFLAKE_CONNECTION_TIMEOUT", 60))
+        return int(
+            self._get_config("connection_timeout", "SNOWFLAKE_CONNECTION_TIMEOUT", 60)
+        )
 
     def get_query_timeout(self) -> int:
         """Get query timeout in seconds."""

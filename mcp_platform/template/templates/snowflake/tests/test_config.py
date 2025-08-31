@@ -7,13 +7,14 @@ and double underscore notation processing.
 """
 
 import os
-import pytest
-import tempfile
-from unittest.mock import patch
-from pathlib import Path
 
 # Import the configuration class
 import sys
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
 sys.path.append(str(Path(__file__).parent.parent))
 from config import SnowflakeServerConfig
 
@@ -25,7 +26,7 @@ class TestSnowflakeServerConfig:
         """Test default configuration values."""
         with patch.dict(os.environ, {"SNOWFLAKE_ACCOUNT": "testaccount"}, clear=True):
             config = SnowflakeServerConfig()
-            
+
             assert config.get_snowflake_account() == "testaccount"
             assert config.get_snowflake_authenticator() == "snowflake"
             assert config.get_read_only() is True
@@ -41,12 +42,12 @@ class TestSnowflakeServerConfig:
             "SNOWFLAKE_WAREHOUSE": "COMPUTE_WH",
             "SNOWFLAKE_READ_ONLY": "false",
             "SNOWFLAKE_CONNECTION_TIMEOUT": "120",
-            "MCP_LOG_LEVEL": "debug"
+            "MCP_LOG_LEVEL": "debug",
         }
-        
+
         with patch.dict(os.environ, env_vars, clear=True):
             config = SnowflakeServerConfig()
-            
+
             assert config.get_snowflake_account() == "mycompany"
             assert config.get_snowflake_user() == "testuser"
             assert config.get_snowflake_password() == "testpass"
@@ -60,11 +61,11 @@ class TestSnowflakeServerConfig:
             config_dict = {
                 "snowflake_account": "dict_account",
                 "snowflake_user": "dict_user",
-                "read_only": False
+                "read_only": False,
             }
-            
+
             config = SnowflakeServerConfig(config_dict=config_dict)
-            
+
             # config_dict should override environment variables
             assert config.get_snowflake_account() == "dict_account"
             assert config.get_snowflake_user() == "dict_user"
@@ -79,42 +80,56 @@ class TestSnowflakeServerConfig:
     def test_authentication_validation(self):
         """Test authentication method validation."""
         base_env = {"SNOWFLAKE_ACCOUNT": "testaccount"}
-        
+
         # Test snowflake auth requires username and password
         with patch.dict(os.environ, base_env, clear=True):
             with pytest.raises(ValueError, match="Username and password are required"):
                 SnowflakeServerConfig()
-        
+
         # Test oauth auth requires token
         oauth_env = {**base_env, "SNOWFLAKE_AUTHENTICATOR": "oauth"}
         with patch.dict(os.environ, oauth_env, clear=True):
             with pytest.raises(ValueError, match="OAuth token is required"):
                 SnowflakeServerConfig()
-        
+
         # Test JWT auth requires username and private key
-        jwt_env = {**base_env, "SNOWFLAKE_AUTHENTICATOR": "snowflake_jwt", "SNOWFLAKE_USER": "user"}
+        jwt_env = {
+            **base_env,
+            "SNOWFLAKE_AUTHENTICATOR": "snowflake_jwt",
+            "SNOWFLAKE_USER": "user",
+        }
         with patch.dict(os.environ, jwt_env, clear=True):
-            with pytest.raises(ValueError, match="Username and private key are required"):
+            with pytest.raises(
+                ValueError, match="Username and private key are required"
+            ):
                 SnowflakeServerConfig()
 
     def test_valid_authentication_configurations(self):
         """Test valid authentication configurations."""
         base_env = {"SNOWFLAKE_ACCOUNT": "testaccount"}
-        
+
         # Valid username/password auth
         valid_env = {**base_env, "SNOWFLAKE_USER": "user", "SNOWFLAKE_PASSWORD": "pass"}
         with patch.dict(os.environ, valid_env, clear=True):
             config = SnowflakeServerConfig()
             assert config.get_snowflake_authenticator() == "snowflake"
-        
+
         # Valid OAuth auth
-        oauth_env = {**base_env, "SNOWFLAKE_AUTHENTICATOR": "oauth", "SNOWFLAKE_OAUTH_TOKEN": "token"}
+        oauth_env = {
+            **base_env,
+            "SNOWFLAKE_AUTHENTICATOR": "oauth",
+            "SNOWFLAKE_OAUTH_TOKEN": "token",
+        }
         with patch.dict(os.environ, oauth_env, clear=True):
             config = SnowflakeServerConfig()
             assert config.get_snowflake_authenticator() == "oauth"
-        
+
         # Valid external browser auth (no additional params needed)
-        browser_env = {**base_env, "SNOWFLAKE_AUTHENTICATOR": "externalbrowser", "SNOWFLAKE_USER": "user"}
+        browser_env = {
+            **base_env,
+            "SNOWFLAKE_AUTHENTICATOR": "externalbrowser",
+            "SNOWFLAKE_USER": "user",
+        }
         with patch.dict(os.environ, browser_env, clear=True):
             config = SnowflakeServerConfig()
             assert config.get_snowflake_authenticator() == "externalbrowser"
@@ -124,14 +139,14 @@ class TestSnowflakeServerConfig:
         base_env = {
             "SNOWFLAKE_ACCOUNT": "testaccount",
             "SNOWFLAKE_USER": "user",
-            "SNOWFLAKE_PASSWORD": "pass"
+            "SNOWFLAKE_PASSWORD": "pass",
         }
-        
+
         # Valid regex patterns should not raise errors
         valid_env = {
             **base_env,
             "SNOWFLAKE_DATABASE_FILTER": "^(PROD|DEV)_.*",
-            "SNOWFLAKE_SCHEMA_FILTER": "^PUBLIC$"
+            "SNOWFLAKE_SCHEMA_FILTER": "^PUBLIC$",
         }
         with patch.dict(os.environ, valid_env, clear=True):
             config = SnowflakeServerConfig()
@@ -143,18 +158,18 @@ class TestSnowflakeServerConfig:
         env_vars = {
             "SNOWFLAKE_ACCOUNT": "testaccount",
             "SNOWFLAKE_USER": "user",
-            "SNOWFLAKE_PASSWORD": "pass"
+            "SNOWFLAKE_PASSWORD": "pass",
         }
-        
+
         config_dict = {
             "snowflake__warehouse": "TEST_WH",
             "snowflake__read_only": "false",
-            "tools__0__custom_field": "custom_value"
+            "tools__0__custom_field": "custom_value",
         }
-        
+
         with patch.dict(os.environ, env_vars, clear=True):
             config = SnowflakeServerConfig(config_dict=config_dict)
-            
+
             # Standard config properties should be processed
             assert config.get_snowflake_warehouse() == "TEST_WH"
             assert config.get_read_only() is False
@@ -164,18 +179,18 @@ class TestSnowflakeServerConfig:
         env_vars = {
             "SNOWFLAKE_ACCOUNT": "testaccount",
             "SNOWFLAKE_USER": "user",
-            "SNOWFLAKE_PASSWORD": "pass"
+            "SNOWFLAKE_PASSWORD": "pass",
         }
-        
+
         config_dict = {
             "read_only": "true",  # string -> boolean
             "connection_timeout": "90",  # string -> integer
-            "query_timeout": "450"  # string -> integer
+            "query_timeout": "450",  # string -> integer
         }
-        
+
         with patch.dict(os.environ, env_vars, clear=True):
             config = SnowflakeServerConfig(config_dict=config_dict)
-            
+
             assert config.get_read_only() is True
             assert config.get_connection_timeout() == 90
             assert config.get_query_timeout() == 450
@@ -187,12 +202,12 @@ class TestSnowflakeServerConfig:
             "SNOWFLAKE_USER": "user",
             "SNOWFLAKE_PASSWORD": "pass",
             "OVERRIDE_snowflake_warehouse": "OVERRIDE_WH",
-            "MCP_OVERRIDE_read_only": "false"
+            "MCP_OVERRIDE_read_only": "false",
         }
-        
+
         with patch.dict(os.environ, env_vars, clear=True):
             config = SnowflakeServerConfig()
-            
+
             # Override variables should be processed
             assert config.get_snowflake_warehouse() == "OVERRIDE_WH"
             assert config.get_read_only() is False
@@ -202,13 +217,13 @@ class TestSnowflakeServerConfig:
         env_vars = {
             "SNOWFLAKE_ACCOUNT": "testaccount",
             "SNOWFLAKE_USER": "user",
-            "SNOWFLAKE_PASSWORD": "pass"
+            "SNOWFLAKE_PASSWORD": "pass",
         }
-        
+
         with patch.dict(os.environ, env_vars, clear=True):
             config = SnowflakeServerConfig()
             template_data = config.get_template_data()
-            
+
             assert "name" in template_data
             assert "version" in template_data
             assert "config_schema" in template_data
@@ -218,17 +233,17 @@ class TestSnowflakeServerConfig:
         """Test configuration value precedence order."""
         env_vars = {
             "SNOWFLAKE_ACCOUNT": "env_account",
-            "SNOWFLAKE_WAREHOUSE": "env_warehouse"
+            "SNOWFLAKE_WAREHOUSE": "env_warehouse",
         }
-        
+
         config_dict = {
             "snowflake_account": "dict_account"
             # Note: snowflake_warehouse not in config_dict
         }
-        
+
         with patch.dict(os.environ, env_vars, clear=True):
             config = SnowflakeServerConfig(config_dict=config_dict)
-            
+
             # config_dict should override env vars
             assert config.get_snowflake_account() == "dict_account"
             # env vars should be used when not in config_dict
@@ -239,9 +254,9 @@ class TestSnowflakeServerConfig:
         env_vars = {
             "SNOWFLAKE_ACCOUNT": "testaccount",
             "SNOWFLAKE_USER": "user",
-            "SNOWFLAKE_PASSWORD": "pass"
+            "SNOWFLAKE_PASSWORD": "pass",
         }
-        
+
         # Test various boolean representations
         test_cases = [
             ("true", True),
@@ -255,28 +270,30 @@ class TestSnowflakeServerConfig:
             ("False", False),
             ("0", False),
             ("no", False),
-            ("off", False)
+            ("off", False),
         ]
-        
+
         for bool_str, expected in test_cases:
             config_dict = {"read_only": bool_str}
             with patch.dict(os.environ, env_vars, clear=True):
                 config = SnowflakeServerConfig(config_dict=config_dict)
-                assert config.get_read_only() is expected, f"Failed for input: {bool_str}"
+                assert (
+                    config.get_read_only() is expected
+                ), f"Failed for input: {bool_str}"
 
     def test_invalid_boolean_conversion(self):
         """Test handling of invalid boolean values."""
         env_vars = {
             "SNOWFLAKE_ACCOUNT": "testaccount",
             "SNOWFLAKE_USER": "user",
-            "SNOWFLAKE_PASSWORD": "pass"
+            "SNOWFLAKE_PASSWORD": "pass",
         }
-        
+
         config_dict = {"read_only": "invalid_boolean"}
-        
+
         with patch.dict(os.environ, env_vars, clear=True):
             # Should not raise an exception, but use the original value or default
-            config = SnowflakeServerConfig(config_dict=config_dict)
+            SnowflakeServerConfig(config_dict=config_dict)
             # The original implementation might handle this differently
             # This test ensures no crash occurs
 
