@@ -10,8 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_platform.template.templates.databricks.config import \
-    DatabricksServerConfig
+from mcp_platform.template.templates.databricks import DatabricksServerConfig
 
 
 class TestDatabricksServerConfig:
@@ -90,9 +89,7 @@ class TestDatabricksServerConfig:
             "read_only": False,
         }
         # Should log a warning when read_only is disabled
-        with patch.object(
-            DatabricksServerConfig, "_validate_databricks_config"
-        ):
+        with patch.object(DatabricksServerConfig, "_validate_databricks_config"):
             config = DatabricksServerConfig(config_dict=config_dict)
             template_config = config.get_template_config()
             assert template_config["read_only"] is False

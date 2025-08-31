@@ -8,8 +8,8 @@ expected tool availability for the Databricks MCP server.
 
 import pytest
 
-from mcp_platform.template.templates.databricks.config import \
-    DatabricksServerConfig
+# Import from the databricks package now that __init__.py is fixed
+from mcp_platform.template.templates.databricks import DatabricksServerConfig
 
 
 class TestDatabricksToolValidation:
