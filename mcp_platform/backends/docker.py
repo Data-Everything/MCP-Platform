@@ -6,19 +6,47 @@ import json
 import logging
 import os
 import socket
-import subprocess
 import time
 import uuid
 from contextlib import suppress
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import sh
+from sh import ErrorReturnCode
+
 from rich.console import Console
 from rich.panel import Panel
 
 from mcp_platform.backends import BaseDeploymentBackend
 from mcp_platform.template.utils.discovery import TemplateDiscovery
-from mcp_platform.utils import SubProcessRunDummyResult
+
+
+class ShCompletedProcess:
+    """Compatibility class that mimics subprocess.CompletedProcess for sh package results."""
+
+    def __init__(self, args, returncode, stdout, stderr):
+        self.args = args
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+    def check_returncode(self):
+        """Raise CalledProcessError if the return code is non-zero."""
+        if self.returncode != 0:
+            raise ShCalledProcessError(self.returncode, self.args, self.stdout, self.stderr)
+
+
+class ShCalledProcessError(Exception):
+    """Exception raised when a command run by sh fails."""
+
+    def __init__(self, returncode, cmd, stdout=None, stderr=None):
+        self.returncode = returncode
+        self.cmd = cmd
+        self.stdout = stdout
+        self.stderr = stderr
+        super().__init__(f"Command '{cmd}' returned non-zero exit status {returncode}")
+
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -64,7 +92,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
     # Docker Infrastructure Methods
     def _run_command(
         self, command: List[str], check: bool = True, **kwargs: Any
-    ) -> subprocess.CompletedProcess:
+    ) -> ShCompletedProcess:
         """Execute a shell command and return the result.
 
         Args:
@@ -72,10 +100,10 @@ class DockerDeploymentService(BaseDeploymentBackend):
             check: Whether to raise exception on non-zero exit code
 
         Returns:
-            CompletedProcess with stdout, stderr, and return code
+            ShCompletedProcess with stdout, stderr, and return code
 
         Raises:
-            subprocess.CalledProcessError: If command fails and check=True
+            ShCalledProcessError: If command fails and check=True
         """
 
         if "stdout" in kwargs or "stderr" in kwargs:
@@ -85,14 +113,53 @@ class DockerDeploymentService(BaseDeploymentBackend):
 
         try:
             logger.debug("Running command: %s", " ".join(command))
-            result = subprocess.run(  # nosec B603
-                command, capture_output=capture_output, text=True, check=check, **kwargs
-            )
+            
+            # Use sh to execute the command
+            cmd_name = command[0]
+            cmd_args = command[1:] if len(command) > 1 else []
+            
+            # Get the command from sh
+            cmd = sh.Command(cmd_name)
+            
+            # Execute the command and capture output
+            try:
+                if capture_output:
+                    result_stdout = cmd(*cmd_args, _return_cmd=False)
+                    result_stderr = ""
+                    returncode = 0
+                else:
+                    # For cases where stdout/stderr are redirected via kwargs
+                    stdout_redirect = kwargs.get("stdout")
+                    stderr_redirect = kwargs.get("stderr")
+                    
+                    result_stdout = cmd(*cmd_args, _out=stdout_redirect, _err=stderr_redirect, _return_cmd=False)
+                    result_stderr = ""
+                    returncode = 0
+                    
+                # Convert result to string if it's not already
+                if result_stdout is not None:
+                    stdout_str = str(result_stdout).rstrip('\n')
+                else:
+                    stdout_str = ""
+                    
+            except ErrorReturnCode as e:
+                stdout_str = e.stdout.decode('utf-8') if e.stdout else ""
+                stderr_str = e.stderr.decode('utf-8') if e.stderr else ""
+                returncode = e.exit_code
+                
+                if check:
+                    raise ShCalledProcessError(returncode, command, stdout_str, stderr_str)
+                    
+                result = ShCompletedProcess(command, returncode, stdout_str, stderr_str)
+                return result
+            
+            result = ShCompletedProcess(command, returncode, stdout_str, result_stderr)
             logger.debug("Command output: %s", result.stdout)
             if result.stderr:
                 logger.debug("Command stderr: %s", result.stderr)
             return result
-        except subprocess.CalledProcessError as e:
+            
+        except ShCalledProcessError as e:
             logger.debug("Command failed: %s", " ".join(command))
             logger.debug("Exit code: %d", e.returncode)
             logger.debug("Stdout: %s", e.stdout)
@@ -116,7 +183,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
                 "Docker server version: %s",
                 version_info.get("Server", {}).get("Version", "unknown"),
             )
-        except (subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        except (ShCalledProcessError, json.JSONDecodeError) as exc:
             logger.error("Docker is not available or not running: %s", exc)
             raise RuntimeError("Docker daemon is not available or not running") from exc
 
@@ -616,12 +683,9 @@ class DockerDeploymentService(BaseDeploymentBackend):
 EOF""",
             ]
 
-            result = subprocess.run(
+            result = self._run_command(
                 bash_command,
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=STDIO_TIMEOUT,
+                check=True
             )
 
             return {
@@ -632,7 +696,7 @@ EOF""",
                 "executed_at": datetime.now().isoformat(),
             }
 
-        except subprocess.CalledProcessError as e:
+        except ShCalledProcessError as e:
             logger.error("Stdio command failed for template %s: %s", template_id, e)
             return {
                 "template_id": template_id,
@@ -642,7 +706,7 @@ EOF""",
                 "error": str(e),
                 "executed_at": datetime.now().isoformat(),
             }
-        except subprocess.TimeoutExpired:
+        except Exception:  # Handle timeout and other exceptions
             logger.error(
                 "Stdio command timed out for template %s after %d seconds",
                 template_id,
@@ -804,7 +868,7 @@ EOF""",
 
             return deployments
 
-        except subprocess.CalledProcessError as e:
+        except ShCalledProcessError as e:
             logger.error("Failed to list deployments: %s", e)
             return []
 
@@ -874,9 +938,7 @@ EOF""",
                                     str(int(lines)),
                                     deployment_name,
                                 ],
-                                check=False,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT,  # Because docker logs are sent to stderr by default
+                                check=False
                             )
                             result_info["logs"] = log_result.stdout
                         except Exception:
@@ -886,7 +948,7 @@ EOF""",
 
             return None
 
-        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
+        except (ShCalledProcessError, json.JSONDecodeError, KeyError) as e:
             logger.debug(f"Failed to get deployment info for {deployment_name}: {e}")
             return None
 
@@ -960,7 +1022,7 @@ EOF""",
             )
             logger.info("Deleted deployment %s", deployment_name)
             return True
-        except subprocess.CalledProcessError as e:
+        except ShCalledProcessError as e:
             logger.error("Failed to delete deployment %s: %s", deployment_name, e)
             return False
 
@@ -980,7 +1042,7 @@ EOF""",
             else:
                 self._run_command([BACKEND_TYPE, "stop", deployment_name])
             return True
-        except subprocess.CalledProcessError:
+        except ShCalledProcessError:
             return False
 
     def _build_internal_image(
@@ -1040,13 +1102,13 @@ EOF""",
             try:
                 # Check if shell exists in container
                 check_cmd = [BACKEND_TYPE, "exec", deployment_id, "which", shell]
-                result = subprocess.run(
-                    check_cmd, capture_output=True, text=True, timeout=5
+                result = self._run_command(
+                    check_cmd, check=False
                 )
                 if result.returncode == 0:
                     available_shells.append(shell)
                     logger.debug(f"Found shell: {shell}")
-            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+            except Exception:
                 continue
 
         if not available_shells:
@@ -1118,7 +1180,7 @@ EOF""",
                     "{{.ID}}\t{{.Names}}\t{{.Status}}",
                 ]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = self._run_command(cmd, check=True)
 
             if not result.stdout.strip():
                 return {
@@ -1143,16 +1205,15 @@ EOF""",
 
             for container in containers_to_clean:
                 try:
-                    subprocess.run(
+                    self._run_command(
                         [BACKEND_TYPE, "rm", container["id"]],
-                        check=True,
-                        capture_output=True,
+                        check=True
                     )
                     cleaned_containers.append(container)
                     logger.info(
                         f"Cleaned up container: {container['name']} ({container['id'][:12]})"
                     )
-                except subprocess.CalledProcessError as e:
+                except ShCalledProcessError as e:
                     failed_cleanups.append({"container": container, "error": str(e)})
                     logger.warning(
                         f"Failed to clean up container {container['name']}: {e}"
@@ -1165,7 +1226,7 @@ EOF""",
                 "message": f"Cleaned up {len(cleaned_containers)} containers",
             }
 
-        except subprocess.CalledProcessError as e:
+        except ShCalledProcessError as e:
             logger.error(f"Failed to list containers for cleanup: {e}")
             return {
                 "success": False,
@@ -1184,7 +1245,7 @@ EOF""",
         try:
             # Find dangling images
             cmd = [BACKEND_TYPE, "images", "--filter", "dangling=true", "-q"]
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = self._run_command(cmd, check=True)
 
             if not result.stdout.strip():
                 return {
@@ -1197,8 +1258,8 @@ EOF""",
 
             # Remove dangling images
             try:
-                subprocess.run(
-                    [BACKEND_TYPE, "rmi"] + image_ids, check=True, capture_output=True
+                self._run_command(
+                    [BACKEND_TYPE, "rmi"] + image_ids, check=True
                 )
 
                 return {
@@ -1207,14 +1268,14 @@ EOF""",
                     "message": f"Cleaned up {len(image_ids)} dangling images",
                 }
 
-            except subprocess.CalledProcessError as e:
+            except ShCalledProcessError as e:
                 return {
                     "success": False,
                     "error": f"Failed to remove dangling images: {e}",
                     "cleaned_images": [],
                 }
 
-        except subprocess.CalledProcessError as e:
+        except ShCalledProcessError as e:
             logger.error(f"Failed to list dangling images: {e}")
             return {
                 "success": False,
