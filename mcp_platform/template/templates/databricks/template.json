@@ -1,0 +1,287 @@
+{
+  "name": "Databricks MCP Server",
+  "description": "A comprehensive MCP server for interacting with Databricks SQL warehouses and clusters, supporting multiple authentication methods and read-only operations by default",
+  "version": "1.0.0",
+  "author": "Data Everything",
+  "category": "Database",
+  "tags": [
+    "databricks",
+    "sql",
+    "warehouse",
+    "cluster",
+    "analytics",
+    "bigdata",
+    "fastmcp"
+  ],
+  "docker_image": "dataeverything/mcp-databricks",
+  "docker_tag": "latest",
+  "ports": {
+    "7072": 7072
+  },
+  "command": [],
+  "transport": {
+    "default": "stdio",
+    "supported": ["stdio", "http"],
+    "port": 7072
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "workspace_host": {
+        "type": "string",
+        "title": "Databricks Workspace Host",
+        "description": "The Databricks workspace host URL (e.g., https://dbc-12345678-1234.cloud.databricks.com)",
+        "env_mapping": "DATABRICKS_HOST",
+        "sensitive": false
+      },
+      "auth_method": {
+        "type": "string",
+        "title": "Authentication Method",
+        "description": "Authentication method to use for Databricks API",
+        "enum": [
+          "pat",
+          "oauth",
+          "username_password"
+        ],
+        "default": "pat",
+        "env_mapping": "DATABRICKS_AUTH_METHOD"
+      },
+      "access_token": {
+        "type": "string",
+        "title": "Personal Access Token",
+        "description": "Databricks Personal Access Token for authentication",
+        "env_mapping": "DATABRICKS_TOKEN",
+        "sensitive": true
+      },
+      "oauth_token": {
+        "type": "string",
+        "title": "OAuth Token",
+        "description": "OAuth token for Databricks authentication",
+        "env_mapping": "DATABRICKS_OAUTH_TOKEN",
+        "sensitive": true
+      },
+      "username": {
+        "type": "string",
+        "title": "Username",
+        "description": "Username for legacy username/password authentication",
+        "env_mapping": "DATABRICKS_USERNAME",
+        "sensitive": false
+      },
+      "password": {
+        "type": "string",
+        "title": "Password",
+        "description": "Password for legacy username/password authentication",
+        "env_mapping": "DATABRICKS_PASSWORD",
+        "sensitive": true
+      },
+      "read_only": {
+        "type": "boolean",
+        "title": "Read-Only Mode",
+        "description": "Enable read-only mode to prevent write operations (strongly recommended for safety)",
+        "default": true,
+        "env_mapping": "DATABRICKS_READ_ONLY"
+      },
+      "allowed_databases": {
+        "type": "string",
+        "title": "Allowed Databases",
+        "description": "Comma-separated list of database patterns to allow access to (supports regex)",
+        "default": "*",
+        "env_mapping": "DATABRICKS_ALLOWED_DATABASES"
+      },
+      "allowed_schemas": {
+        "type": "string", 
+        "title": "Allowed Schemas",
+        "description": "Comma-separated list of schema patterns to allow access to (supports regex)",
+        "default": "*",
+        "env_mapping": "DATABRICKS_ALLOWED_SCHEMAS"
+      },
+      "connection_timeout": {
+        "type": "integer",
+        "title": "Connection Timeout",
+        "description": "Connection timeout in seconds for Databricks API calls",
+        "default": 30,
+        "env_mapping": "DATABRICKS_TIMEOUT"
+      },
+      "max_rows": {
+        "type": "integer",
+        "title": "Maximum Rows",
+        "description": "Maximum number of rows to return from query results",
+        "default": 1000,
+        "env_mapping": "DATABRICKS_MAX_ROWS"
+      },
+      "enable_cache": {
+        "type": "boolean",
+        "title": "Enable Caching",
+        "description": "Enable caching for metadata queries to improve performance",
+        "default": true,
+        "env_mapping": "DATABRICKS_ENABLE_CACHE"
+      },
+      "log_level": {
+        "type": "string",
+        "title": "Log Level",
+        "description": "Logging level for the server",
+        "enum": [
+          "debug",
+          "info",
+          "warning",
+          "error"
+        ],
+        "default": "info",
+        "env_mapping": "DATABRICKS_LOG_LEVEL"
+      }
+    },
+    "required": ["workspace_host"]
+  },
+  "capabilities": [
+    {
+      "name": "Cluster Management",
+      "description": "List and describe Databricks clusters and SQL warehouses",
+      "example": "List available clusters, get cluster details, check warehouse status"
+    },
+    {
+      "name": "Database Schema Discovery",
+      "description": "Explore databases, schemas, and table structures",
+      "example": "List databases, browse tables, describe table schemas and column types"
+    },
+    {
+      "name": "SQL Query Execution",
+      "description": "Execute SQL queries against Databricks warehouses with read-only safety",
+      "example": "Run SELECT queries, analyze data, export query results"
+    },
+    {
+      "name": "Access Control & Filtering",
+      "description": "Filter databases and schemas using patterns and regex for security",
+      "example": "Restrict access to specific databases, apply regex filters to schema names"
+    }
+  ],
+  "tools": [
+    {
+      "name": "list_clusters",
+      "description": "List all available Databricks clusters",
+      "parameters": []
+    },
+    {
+      "name": "list_warehouses", 
+      "description": "List all available SQL warehouses",
+      "parameters": []
+    },
+    {
+      "name": "list_databases",
+      "description": "List all accessible databases in the workspace",
+      "parameters": [
+        {
+          "name": "pattern",
+          "description": "Optional pattern to filter database names",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "list_tables",
+      "description": "List tables in a specific database/schema",
+      "parameters": [
+        {
+          "name": "database",
+          "description": "Database name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "schema",
+          "description": "Schema name (optional, defaults to 'default')",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "describe_table",
+      "description": "Get detailed schema information for a specific table",
+      "parameters": [
+        {
+          "name": "database",
+          "description": "Database name",
+          "type": "string", 
+          "required": true
+        },
+        {
+          "name": "schema",
+          "description": "Schema name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "table",
+          "description": "Table name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "execute_query",
+      "description": "Execute a SQL query against a Databricks warehouse (read-only by default)",
+      "parameters": [
+        {
+          "name": "query",
+          "description": "SQL query to execute",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "warehouse_id",
+          "description": "SQL warehouse ID to execute the query on",
+          "type": "string", 
+          "required": false
+        },
+        {
+          "name": "limit",
+          "description": "Maximum number of rows to return",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_cluster_info",
+      "description": "Get detailed information about a specific cluster",
+      "parameters": [
+        {
+          "name": "cluster_id",
+          "description": "Cluster ID to get information for",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_warehouse_info",
+      "description": "Get detailed information about a specific SQL warehouse",
+      "parameters": [
+        {
+          "name": "warehouse_id",
+          "description": "Warehouse ID to get information for",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "tool_discovery": "static",
+  "tool_endpoint": "/tools",
+  "has_image": true,
+  "origin": "internal",
+  "examples": {
+    "http_endpoint": "http://localhost:7072",
+    "cli_usage": [
+      "python -m mcp_platform deploy databricks --config workspace_host=https://dbc-12345.cloud.databricks.com --config access_token=dapi123...",
+      "python -m mcp_platform deploy databricks --config workspace_host=https://dbc-12345.cloud.databricks.com --config auth_method=oauth --config oauth_token=...",
+      "python -m mcp_platform deploy databricks --config workspace_host=https://dbc-12345.cloud.databricks.com --config read_only=false --config allowed_databases='analytics,reporting'"
+    ],
+    "client_integration": {
+      "fastmcp": "from fastmcp.client import FastMCPClient\nclient = FastMCPClient(endpoint='http://localhost:7072')\nresult = client.call('list_databases')",
+      "curl": "curl -X POST http://localhost:7072/call -H 'Content-Type: application/json' -d '{\"method\": \"execute_query\", \"params\": {\"query\": \"SELECT * FROM default.my_table LIMIT 10\"}}'"
+    }
+  }
+}
