@@ -533,3 +533,152 @@ def test_authentication(
             console.print(f"[red]✗ Error testing authentication: {e}[/red]")
 
     asyncio.run(_test_auth())
+
+
+@gateway_app.command("register")
+def register_server(
+    template_name: str = typer.Argument(..., help="Template name to register"),
+    endpoint: Optional[str] = typer.Option(
+        None, "--endpoint", "-e", help="HTTP endpoint URL"
+    ),
+    command: Optional[str] = typer.Option(
+        None, "--command", "-c", help="Command to run for stdio server"
+    ),
+    working_dir: Optional[str] = typer.Option(
+        None, "--working-dir", "-w", help="Working directory for stdio server"
+    ),
+    transport: str = typer.Option(
+        "http", "--transport", help="Transport type (http/stdio)"
+    ),
+    backend: str = typer.Option("docker", "--backend", help="Backend type"),
+    host: str = typer.Option("localhost", "--host", help="Gateway host"),
+    port: int = typer.Option(8080, "--port", help="Gateway port"),
+    api_key: Optional[str] = typer.Option(
+        None, "--api-key", help="API key for authentication"
+    ),
+):
+    """
+    Register a server instance with the gateway.
+
+    Examples:
+      mcpp gateway register mytemplate --endpoint http://localhost:7071
+      mcpp gateway register mytemplate --command "python server.py" --working-dir /app
+    """
+    console.print(
+        "[yellow]Note: register command is not yet fully implemented[/yellow]"
+    )
+    console.print(f"Would register template '{template_name}' with:")
+    if endpoint:
+        console.print(f"  Endpoint: {endpoint}")
+    if command:
+        console.print(f"  Command: {command}")
+        if working_dir:
+            console.print(f"  Working dir: {working_dir}")
+
+
+@gateway_app.command("list")
+def list_instances(
+    template: Optional[str] = typer.Option(
+        None, "--template", help="Filter by template name"
+    ),
+    show_all: bool = typer.Option(
+        False, "--all", help="Show all instances including unhealthy"
+    ),
+    host: str = typer.Option("localhost", "--host", help="Gateway host"),
+    port: int = typer.Option(8080, "--port", help="Gateway port"),
+    api_key: Optional[str] = typer.Option(
+        None, "--api-key", help="API key for authentication"
+    ),
+):
+    """
+    List registered server instances and templates.
+    """
+
+    async def _list_instances():
+        gateway_url = f"http://{host}:{port}"
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        try:
+            async with aiohttp.ClientSession(headers=headers) as session:
+                # Get templates and instances
+                async with session.get(f"{gateway_url}/gateway/templates") as resp:
+                    if resp.status == 200:
+                        templates_data = await resp.json()
+
+                        if not templates_data.get("templates"):
+                            console.print("[yellow]No templates registered[/yellow]")
+                            return
+
+                        # Create table
+                        table = Table(title="Registered Gateway Instances")
+                        table.add_column("Template", style="bold cyan")
+                        table.add_column("Instance Count")
+                        table.add_column("Healthy")
+                        table.add_column("Strategy")
+
+                        for template_name in templates_data["templates"]:
+                            if template and template_name != template:
+                                continue
+
+                            # For now, show template info - actual instances would need API support
+                            table.add_row(template_name, "0", "0", "round_robin")
+
+                        console.print(table)
+
+                    else:
+                        console.print(
+                            f"[red]✗ Failed to list instances (status: {resp.status})[/red]"
+                        )
+
+        except aiohttp.ClientError as e:
+            console.print(
+                f"[red]✗ Cannot connect to gateway at {gateway_url}: {e}[/red]"
+            )
+        except Exception as e:
+            console.print(f"[red]✗ Error listing instances: {e}[/red]")
+
+    asyncio.run(_list_instances())
+
+
+@gateway_app.command("remove")
+def remove_instance(
+    template_name: str = typer.Argument(..., help="Template name"),
+    instance_id: str = typer.Argument(..., help="Instance ID to remove"),
+    host: str = typer.Option("localhost", "--host", help="Gateway host"),
+    port: int = typer.Option(8080, "--port", help="Gateway port"),
+):
+    """
+    Remove/deregister a server instance from the gateway.
+    """
+    console.print("[yellow]Note: remove command is not yet fully implemented[/yellow]")
+    console.print(
+        f"Would remove instance '{instance_id}' from template '{template_name}'"
+    )
+
+
+@gateway_app.command("stop")
+def stop_gateway(
+    host: str = typer.Option("localhost", "--host", help="Gateway host"),
+    port: int = typer.Option(8080, "--port", help="Gateway port"),
+    force: bool = typer.Option(
+        False, "--force", help="Force stop without confirmation"
+    ),
+):
+    """
+    Stop the gateway server gracefully.
+    """
+
+    if not force:
+        confirm = typer.confirm("Are you sure you want to stop the gateway server?")
+        if not confirm:
+            console.print("[yellow]Cancelled[/yellow]")
+            return
+
+    # For now, just show what would happen
+    console.print("[yellow]Note: stop command is not yet fully implemented[/yellow]")
+    console.print(f"Would attempt to stop gateway at http://{host}:{port}")
+    console.print(
+        "[yellow]Use Ctrl+C in the terminal where gateway is running, or kill the process[/yellow]"
+    )
