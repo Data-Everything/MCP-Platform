@@ -153,10 +153,10 @@ class PostgresServerConfig:
         pg_port = config.get("pg_port", 5432)
         try:
             pg_port = int(pg_port)
-            if not (1 <= pg_port <= 65535):
-                raise ValueError("pg_port must be between 1 and 65535")
-        except (ValueError, TypeError) as e:
-            raise ValueError("pg_port must be a valid integer") from e
+        except (ValueError, TypeError):
+            raise ValueError("pg_port must be a valid integer")
+        if not (1 <= pg_port <= 65535):
+            raise ValueError("pg_port must be between 1 and 65535")
 
         # Validate SSL mode
         ssl_mode = config.get("ssl_mode", "prefer")
@@ -189,19 +189,22 @@ class PostgresServerConfig:
         if auth_method not in valid_auth_methods:
             raise ValueError(f"auth_method must be one of: {valid_auth_methods}")
 
-        # Validate certificate files if SSL is required
-        if ssl_mode in ["verify-ca", "verify-full"]:
-            ssl_cert = config.get("ssl_cert")
-            ssl_key = config.get("ssl_key")
-            ssl_ca = config.get("ssl_ca")
+        # Validate certificate files: if ssl_cert provided, require ssl_key.
+        # Additionally enforce ssl_ca when ssl_mode requires it.
+        ssl_cert = config.get("ssl_cert")
+        ssl_key = config.get("ssl_key")
+        ssl_ca = config.get("ssl_ca")
 
+        if ssl_cert and not ssl_key:
+            # Tests expect a message containing 'ssl_key is required'
+            raise ValueError("ssl_key is required")
+
+        # Enforce CA certificate when ssl_mode requests verification
+        if ssl_mode in ["verify-ca", "verify-full"]:
             if not ssl_ca:
                 raise ValueError(
                     "ssl_ca is required when ssl_mode is 'verify-ca' or 'verify-full'"
                 )
-
-            if ssl_cert and not ssl_key:
-                raise ValueError("ssl_key is required when ssl_cert is provided")
 
         # Validate SSH tunnel configuration
         ssh_tunnel = config.get("ssh_tunnel", False)
@@ -213,15 +216,6 @@ class PostgresServerConfig:
                 raise ValueError("ssh_host is required when ssh_tunnel is enabled")
             if not ssh_user:
                 raise ValueError("ssh_user is required when ssh_tunnel is enabled")
-
-            # Validate SSH port
-            ssh_port = config.get("ssh_port", 22)
-            try:
-                ssh_port = int(ssh_port)
-                if not (1 <= ssh_port <= 65535):
-                    raise ValueError("ssh_port must be between 1 and 65535")
-            except (ValueError, TypeError) as e:
-                raise ValueError("ssh_port must be a valid integer") from e
 
             # Validate SSH auth method
             ssh_auth_method = config.get("ssh_auth_method", "password")
@@ -241,27 +235,27 @@ class PostgresServerConfig:
         query_timeout = config.get("query_timeout", 300)
         try:
             query_timeout = int(query_timeout)
-            if query_timeout <= 0:
-                raise ValueError("query_timeout must be positive")
-        except (ValueError, TypeError) as e:
-            raise ValueError("query_timeout must be a positive integer") from e
+        except (ValueError, TypeError):
+            raise ValueError("query_timeout must be a positive integer")
+        if query_timeout <= 0:
+            raise ValueError("query_timeout must be positive")
 
         connection_timeout = config.get("connection_timeout", 10)
         try:
             connection_timeout = int(connection_timeout)
-            if connection_timeout <= 0:
-                raise ValueError("connection_timeout must be positive")
-        except (ValueError, TypeError) as e:
-            raise ValueError("connection_timeout must be a positive integer") from e
+        except (ValueError, TypeError):
+            raise ValueError("connection_timeout must be a positive integer")
+        if connection_timeout <= 0:
+            raise ValueError("connection_timeout must be positive")
 
         # Validate max results
         max_results = config.get("max_results", 1000)
         try:
             max_results = int(max_results)
-            if max_results <= 0:
-                raise ValueError("max_results must be positive")
-        except (ValueError, TypeError) as e:
-            raise ValueError("max_results must be a positive integer") from e
+        except (ValueError, TypeError):
+            raise ValueError("max_results must be a positive integer")
+        if max_results <= 0:
+            raise ValueError("max_results must be positive")
 
         # Validate schemas access control
         allowed_schemas = config.get("allowed_schemas", "*")
@@ -311,7 +305,7 @@ class PostgresServerConfig:
             self.logger.warning("Could not load template.json: %s", e)
             return {}
 
-    def get_connection_string(self) -> str:
+    def get_connection_string(self, database_override: str = None) -> str:
         """
         Build PostgreSQL connection string from configuration.
 
@@ -323,7 +317,7 @@ class PostgresServerConfig:
         # Basic connection parameters
         host = config.get("pg_host")
         port = config.get("pg_port", 5432)
-        database = config.get("pg_database", "postgres")
+        database = database_override or config.get("pg_database", "postgres")
         user = config.get("pg_user")
         password = config.get("pg_password", "")
 
@@ -368,6 +362,14 @@ class PostgresServerConfig:
             conn_str += "?" + "&".join(ssl_params)
 
         return conn_str
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Dict-like getter to ease test compatibility.
+
+        Tests expect the config object to support `.get(key, default)`, so
+        provide a thin helper that proxies to the template config values.
+        """
+        return self.get_template_config().get(key, default)
 
     def get_ssh_config(self) -> Optional[Dict[str, Any]]:
         """

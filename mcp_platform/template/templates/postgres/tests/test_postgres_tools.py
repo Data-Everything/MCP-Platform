@@ -586,14 +586,30 @@ class TestPostgresServerConnection:
             mock_tunnel.stop.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_error_handling(self, mock_server):
+    async def test_error_handling(self):
         """Test error handling in tools."""
-        # Mock connection to raise exception
-        mock_server.engine.connect.side_effect = Exception("Database error")
+        # Build a local mock server similar to other connection tests
+        config_dict = {
+            "pg_host": "localhost",
+            "pg_user": "testuser",
+            "pg_password": "testpass",
+        }
 
-        result = await mock_server.list_schemas(
-            mock_server.config_data.get("pg_database", "postgres")
-        )
+        with (
+            patch("server.create_engine"),
+            patch("server.SSHTunnelForwarder"),
+            patch("server.psycopg"),
+        ):
+            server = PostgresMCPServer(config_dict=config_dict, skip_validation=True)
+
+            # Mock connection to raise exception
+            mock_engine = MagicMock()
+            mock_engine.connect.side_effect = Exception("Database error")
+            server.engine = mock_engine
+
+            result = await server.list_schemas(
+                server.config_data.get("pg_database", "postgres")
+            )
 
         assert "error" in result
         assert "Failed to list schemas" in result["error"]

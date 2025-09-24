@@ -928,15 +928,28 @@ class PostgresMCPServer:
             }
 
             if self.engine:
+                # Build a masked database URL without relying on str(engine.url)
+                try:
+                    url_user = getattr(self.engine.url, "username", None)
+                    url_host = getattr(self.engine.url, "host", None)
+                    url_port = getattr(self.engine.url, "port", None)
+                    url_db = getattr(self.engine.url, "database", None)
+                    url_password = getattr(self.engine.url, "password", None)
+
+                    if url_user and url_host:
+                        if url_password:
+                            masked = f"{url_user}:***@{url_host}:{url_port}/{url_db}"
+                        else:
+                            masked = f"{url_user}@{url_host}:{url_port}/{url_db}"
+                    else:
+                        masked = str(getattr(self.engine, "url", ""))
+
+                except Exception:
+                    masked = str(getattr(self.engine, "url", ""))
+
                 connection_info.update(
                     {
-                        "database_url": (
-                            str(self.engine.url).replace(
-                                f":{self.engine.url.password}@", ":***@"
-                            )
-                            if self.engine.url.password
-                            else str(self.engine.url)
-                        ),
+                        "database_url": masked,
                         "pool_size": getattr(self.engine.pool, "size", None),
                         "checked_out_connections": getattr(
                             self.engine.pool, "checkedout", None

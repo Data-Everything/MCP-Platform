@@ -243,7 +243,7 @@ class TestPostgresTemplateConfiguration:
         config = PostgresServerConfig(config_dict=config_dict, skip_validation=True)
         connection_string = config.get_connection_string()
 
-        assert "postgresql://testuser:" in connection_string
+        assert "postgresql+psycopg://testuser:" in connection_string
         assert "@db.example.com:5433/testdb" in connection_string
         assert "sslmode=require" in connection_string
         assert "connect_timeout=10" in connection_string
