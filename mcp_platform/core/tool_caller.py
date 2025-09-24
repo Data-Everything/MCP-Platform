@@ -107,7 +107,7 @@ class ToolCaller:
             # For other transports, return empty list for now
             return []
         except Exception as e:
-            logger.error(f"Failed to list tools from {endpoint}: {e}")
+            logger.error("Failed to list tools from %s: %s", endpoint, e)
             return []
 
     async def call_tool_mcp_connection(
@@ -175,6 +175,7 @@ class ToolCaller:
         timeout: int = 30,
     ) -> Dict:
         """Call a tool on a running MCP server."""
+
         try:
             if transport == "http":
                 # Use MCPConnection for unified HTTP protocol handling
@@ -202,7 +203,7 @@ class ToolCaller:
 
                 except Exception as e:
                     logger.debug(
-                        f"MCPConnection failed, falling back to legacy HTTP: {e}"
+                        "MCPConnection failed, falling back to legacy HTTP: %s", e
                     )
                     # Fall back to legacy HTTP method
                     tool_url = f"{endpoint.rstrip('/')}/call/{tool_name}"
@@ -251,6 +252,7 @@ class ToolCaller:
         Returns:
             ToolCallResult with structured response
         """
+
         if not self.docker_service:
             raise ToolCallError("Docker backend not available for stdio calls")
 
@@ -258,7 +260,6 @@ class ToolCaller:
         transport = template_config.get("transport", {})
         default_transport = transport.get("default", "http")
         supported_transports = transport.get("supported", ["http"])
-
         if "stdio" not in supported_transports and default_transport != "stdio":
             raise ToolCallError(
                 f"Template '{template_name}' does not support stdio transport. "
@@ -313,9 +314,9 @@ class ToolCaller:
                     raw_output=result.get("stderr", ""),
                 )
 
-        except Exception as e:
-            logger.error("Failed to call tool %s via stdio: %s", tool_name, e)
-            raise ToolCallError(f"Stdio tool call failed: {e}")
+        except Exception as exception:
+            logger.error("Failed to call tool %s via stdio: %s", tool_name, exception)
+            raise ToolCallError("Stdio tool call failed: %s" % exception) from exception
 
     def call_tool_http(
         self,
@@ -346,9 +347,11 @@ class ToolCaller:
                 logger.error("HTTP tool call failed: %s", result.get("error"))
                 return None
 
-        except Exception as e:
-            logger.error("Failed to call tool %s via HTTP: %s", tool_name, e)
-            raise ToolCallError(f"HTTP tool call failed: {e}")
+        except Exception as exception:
+            logger.error("Failed to call tool %s via HTTP: %s", tool_name, exception)
+            raise ToolCallError(
+                "HTTP tool call failed: %s: %s" % (tool_name, exception)
+            ) from exception
 
     def _parse_stdio_response_enhanced(
         self, docker_result: Dict[str, Any], tool_name: str

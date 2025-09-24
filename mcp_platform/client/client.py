@@ -715,6 +715,7 @@ class MCPClient:
         Returns:
             Tool response or None if failed
         """
+
         try:
             # Use multi-backend manager for tool calling to support auto-detection
             # and priority-based discovery across all backends

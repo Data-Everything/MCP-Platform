@@ -1,0 +1,533 @@
+{
+  "id": "postgres",
+  "name": "PostgreSQL MCP Server",
+  "description": "Production-ready PostgreSQL MCP server for secure database access with configurable authentication, read-only mode, SSH tunneling, and comprehensive query capabilities using FastMCP and SQLAlchemy",
+  "version": "1.0.0",
+  "author": "Data Everything",
+  "category": "Database",
+  "tags": [
+    "postgresql",
+    "postgres",
+    "sql",
+    "database",
+    "relational",
+    "fastmcp",
+    "sqlalchemy"
+  ],
+  "docker_image": "dataeverything/mcp-postgres",
+  "docker_tag": "latest",
+  "ports": {
+    "7080": 7080
+  },
+  "command": [],
+  "transport": {
+    "default": "http",
+    "supported": ["http", "stdio"],
+    "port": 7080
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "pg_host": {
+        "type": "string",
+        "title": "PostgreSQL Host",
+        "description": "PostgreSQL server hostname or IP address",
+        "env_mapping": "PG_HOST"
+      },
+      "pg_port": {
+        "type": "integer",
+        "title": "PostgreSQL Port",
+        "description": "PostgreSQL server port number",
+        "default": 5432,
+        "minimum": 1,
+        "maximum": 65535,
+        "env_mapping": "PG_PORT"
+      },
+      "pg_user": {
+        "type": "string",
+        "title": "PostgreSQL User",
+        "description": "Username for PostgreSQL authentication",
+        "env_mapping": "PG_USER"
+      },
+      "pg_password": {
+        "type": "string",
+        "title": "PostgreSQL Password",
+        "description": "Password for PostgreSQL authentication",
+        "env_mapping": "PG_PASSWORD"
+      },
+      "pg_database": {
+        "type": "string",
+        "title": "Database Name",
+        "description": "PostgreSQL database name to connect to",
+        "default": "postgres",
+        "env_mapping": "PG_DATABASE"
+      },
+      "ssl_mode": {
+        "type": "string",
+        "title": "SSL Mode",
+        "description": "SSL connection mode",
+        "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
+        "default": "prefer",
+        "env_mapping": "PG_SSL_MODE"
+      },
+      "ssl_cert": {
+        "type": "string",
+        "title": "SSL Certificate",
+        "description": "Path to SSL client certificate file",
+        "env_mapping": "PG_SSL_CERT"
+      },
+      "ssl_key": {
+        "type": "string",
+        "title": "SSL Private Key",
+        "description": "Path to SSL client private key file",
+        "env_mapping": "PG_SSL_KEY"
+      },
+      "ssl_ca": {
+        "type": "string",
+        "title": "SSL CA Certificate",
+        "description": "Path to SSL Certificate Authority file",
+        "env_mapping": "PG_SSL_CA"
+      },
+      "auth_method": {
+        "type": "string",
+        "title": "Authentication Method",
+        "description": "PostgreSQL authentication method",
+        "enum": ["password", "md5", "scram-sha-256", "gss", "sspi", "ident", "peer", "ldap", "radius", "cert", "pam"],
+        "default": "password",
+        "env_mapping": "PG_AUTH_METHOD"
+      },
+      "connection_timeout": {
+        "type": "integer",
+        "title": "Connection Timeout",
+        "description": "Database connection timeout in seconds",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 300,
+        "env_mapping": "PG_CONNECTION_TIMEOUT"
+      },
+      "query_timeout": {
+        "type": "integer",
+        "title": "Query Timeout",
+        "description": "Query execution timeout in seconds",
+        "default": 300,
+        "minimum": 1,
+        "maximum": 3600,
+        "env_mapping": "PG_QUERY_TIMEOUT"
+      },
+      "max_results": {
+        "type": "integer",
+        "title": "Maximum Query Results",
+        "description": "Maximum number of rows to return from queries",
+        "default": 1000,
+        "minimum": 1,
+        "maximum": 10000,
+        "env_mapping": "PG_MAX_RESULTS"
+      },
+      "read_only": {
+        "type": "boolean",
+        "title": "Read Only Mode",
+        "description": "Run the server in read-only mode (blocks write queries)",
+        "default": true,
+        "env_mapping": "PG_READ_ONLY"
+      },
+      "allowed_schemas": {
+        "type": "string",
+        "title": "Allowed Schemas",
+        "description": "Comma-separated list or regex pattern of allowed schemas",
+        "default": "*",
+        "env_mapping": "PG_ALLOWED_SCHEMAS"
+      },
+      "ssh_tunnel": {
+        "type": "boolean",
+        "title": "Enable SSH Tunnel",
+        "description": "Enable SSH tunnel for database connection",
+        "default": false,
+        "env_mapping": "PG_SSH_TUNNEL"
+      },
+      "ssh_host": {
+        "type": "string",
+        "title": "SSH Host",
+        "description": "SSH server hostname or IP address",
+        "env_mapping": "PG_SSH_HOST"
+      },
+      "ssh_port": {
+        "type": "integer",
+        "title": "SSH Port",
+        "description": "SSH server port number",
+        "default": 22,
+        "minimum": 1,
+        "maximum": 65535,
+        "env_mapping": "PG_SSH_PORT"
+      },
+      "ssh_user": {
+        "type": "string",
+        "title": "SSH User",
+        "description": "SSH username for tunnel authentication",
+        "env_mapping": "PG_SSH_USER"
+      },
+      "ssh_password": {
+        "type": "string",
+        "title": "SSH Password",
+        "description": "SSH password for tunnel authentication",
+        "env_mapping": "PG_SSH_PASSWORD"
+      },
+      "ssh_key_file": {
+        "type": "string",
+        "title": "SSH Private Key File",
+        "description": "Path to SSH private key file",
+        "env_mapping": "PG_SSH_KEY_FILE"
+      },
+      "ssh_key_passphrase": {
+        "type": "string",
+        "title": "SSH Key Passphrase",
+        "description": "Passphrase for SSH private key",
+        "env_mapping": "PG_SSH_KEY_PASSPHRASE"
+      },
+      "ssh_auth_method": {
+        "type": "string",
+        "title": "SSH Authentication Method",
+        "description": "SSH authentication method",
+        "enum": ["password", "key", "agent"],
+        "default": "password",
+        "env_mapping": "PG_SSH_AUTH_METHOD"
+      },
+      "ssh_local_port": {
+        "type": "integer",
+        "title": "SSH Local Port",
+        "description": "Local port for SSH tunnel (0 for auto-assign)",
+        "default": 0,
+        "minimum": 0,
+        "maximum": 65535,
+        "env_mapping": "PG_SSH_LOCAL_PORT"
+      },
+      "log_level": {
+        "type": "string",
+        "title": "Log Level",
+        "description": "Logging level for the server",
+        "enum": [
+          "debug",
+          "info",
+          "warning",
+          "error"
+        ],
+        "default": "info",
+        "env_mapping": "MCP_LOG_LEVEL"
+      }
+    },
+    "required": ["pg_host", "pg_user"],
+    "anyOf": [
+      {
+        "if": {
+          "properties": {"ssh_tunnel": {"const": false}}
+        },
+        "then": {
+          "required": ["pg_password"]
+        }
+      },
+      {
+        "if": {
+          "properties": {"ssh_tunnel": {"const": true}}
+        },
+        "then": {
+          "required": ["ssh_host", "ssh_user"],
+          "anyOf": [
+            {
+              "title": "SSH Password Authentication",
+              "description": "Use password-based SSH authentication",
+              "properties": {
+                "ssh_auth_method": {"const": "password"}
+              },
+              "required": ["ssh_password"]
+            },
+            {
+              "title": "SSH Key Authentication",
+              "description": "Use key-based SSH authentication",
+              "properties": {
+                "ssh_auth_method": {"const": "key"}
+              },
+              "required": ["ssh_key_file"]
+            },
+            {
+              "title": "SSH Agent Authentication",
+              "description": "Use SSH agent for authentication",
+              "properties": {
+                "ssh_auth_method": {"const": "agent"}
+              }
+            }
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {"ssl_mode": {"enum": ["verify-ca", "verify-full"]}}
+        },
+        "then": {
+          "required": ["ssl_ca"]
+        }
+      },
+      {
+        "if": {
+          "properties": {"auth_method": {"const": "cert"}}
+        },
+        "then": {
+          "required": ["ssl_cert", "ssl_key"]
+        }
+      },
+      {
+        "if": {
+          "properties": {"ssl_mode": {"enum": ["require", "verify-ca", "verify-full"]}}
+        },
+        "then": {
+          "properties": {
+            "ssl_cert": {"type": "string"},
+            "ssl_key": {"type": "string"}
+          }
+        }
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "name": "Schema Discovery",
+      "description": "List and explore PostgreSQL schemas and database objects",
+      "example": "List all accessible schemas, browse table information, get schema metadata"
+    },
+    {
+      "name": "Table Inspection",
+      "description": "Inspect table schemas, columns, indexes, and constraints",
+      "example": "Get detailed schema for tables, view column types, examine relationships"
+    },
+    {
+      "name": "Query Execution",
+      "description": "Execute SQL queries against PostgreSQL database",
+      "example": "Run SELECT queries, analyze data, generate reports (read-only by default)"
+    },
+    {
+      "name": "Query Planning",
+      "description": "Analyze query execution plans and performance",
+      "example": "Get EXPLAIN plans, identify performance bottlenecks, optimize queries"
+    },
+    {
+      "name": "Access Control",
+      "description": "Configurable schema access controls with filter support",
+      "example": "Filter accessible schemas, enforce read-only mode, pattern-based access"
+    },
+    {
+      "name": "SSH Tunneling",
+      "description": "Secure database connections through SSH tunnels",
+      "example": "Connect to remote databases securely, bypass firewalls, encrypted connections"
+    },
+    {
+      "name": "SSL/TLS Support",
+      "description": "Comprehensive SSL/TLS connection security",
+      "example": "Certificate validation, encrypted connections, client authentication"
+    }
+  ],
+  "tools": [
+    {
+      "name": "list_databases",
+      "description": "List all databases on the PostgreSQL server",
+      "parameters": []
+    },
+    {
+      "name": "list_schemas",
+      "description": "List all accessible database schemas for a given database",
+      "parameters": [
+        {
+          "name": "database",
+          "description": "Database name to list schemas from",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "list_tables",
+      "description": "List tables in a specific schema",
+      "parameters": [
+        {
+          "name": "schema",
+          "description": "Schema name to list tables from",
+          "type": "string",
+          "required": false,
+          "default": "public"
+        }
+      ]
+    },
+    {
+      "name": "describe_table",
+      "description": "Get detailed schema information for a table",
+      "parameters": [
+        {
+          "name": "table",
+          "description": "Table name to describe",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "schema",
+          "description": "Schema name containing the table",
+          "type": "string",
+          "required": false,
+          "default": "public"
+        }
+      ]
+    },
+    {
+      "name": "list_columns",
+      "description": "List columns in a specific table",
+      "parameters": [
+        {
+          "name": "table",
+          "description": "Table name to list columns from",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "schema",
+          "description": "Schema name containing the table",
+          "type": "string",
+          "required": false,
+          "default": "public"
+        }
+      ]
+    },
+    {
+      "name": "execute_query",
+      "description": "Execute a SQL query against PostgreSQL (subject to read-only restrictions)",
+      "parameters": [
+        {
+          "name": "query",
+          "description": "SQL query to execute",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "description": "Maximum number of rows to return (optional)",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "explain_query",
+      "description": "Get query execution plan for a SQL query",
+      "parameters": [
+        {
+          "name": "query",
+          "description": "SQL query to explain",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_database_info",
+      "description": "Get information about the PostgreSQL database",
+      "parameters": []
+    },
+    {
+      "name": "get_table_stats",
+      "description": "Get statistics for a specific table",
+      "parameters": [
+        {
+          "name": "table",
+          "description": "Table name to get statistics for",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "schema",
+          "description": "Schema name containing the table",
+          "type": "string",
+          "required": false,
+          "default": "public"
+        }
+      ]
+    },
+    {
+      "name": "list_indexes",
+      "description": "List indexes for a specific table",
+      "parameters": [
+        {
+          "name": "table",
+          "description": "Table name to list indexes for",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "schema",
+          "description": "Schema name containing the table",
+          "type": "string",
+          "required": false,
+          "default": "public"
+        }
+      ]
+    },
+    {
+      "name": "list_constraints",
+      "description": "List constraints for a specific table",
+      "parameters": [
+        {
+          "name": "table",
+          "description": "Table name to list constraints for",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "schema",
+          "description": "Schema name containing the table",
+          "type": "string",
+          "required": false,
+          "default": "public"
+        }
+      ]
+    },
+    {
+      "name": "test_connection",
+      "description": "Test the database connection",
+      "parameters": []
+    },
+    {
+      "name": "get_connection_info",
+      "description": "Get information about the current database connection",
+      "parameters": []
+    }
+  ],
+  "tool_discovery": "static",
+  "response_formatter": {
+    "enabled": true,
+    "tools": [
+      "list_schemas",
+      "list_tables",
+      "describe_table",
+      "list_columns",
+      "execute_query",
+      "explain_query",
+      "get_database_info",
+      "get_table_stats",
+      "list_indexes",
+      "list_constraints",
+      "test_connection",
+      "get_connection_info"
+    ]
+  },
+  "tool_endpoint": "/tools",
+  "has_image": true,
+  "origin": "internal",
+  "examples": {
+    "http_endpoint": "http://localhost:7080",
+    "cli_usage": [
+      "python -m mcp_platform deploy postgres --config pg_host='localhost' --config pg_user='postgres' --config pg_password='secret'",
+      "python -m mcp_platform deploy postgres --config pg_host='db.example.com' --config pg_user='readonly' --config pg_database='analytics'",
+      "python -m mcp_platform deploy postgres --config pg_host='localhost' --config ssh_tunnel=true --config ssh_host='bastion.example.com' --config ssh_user='admin'",
+      "python -m mcp_platform deploy postgres --config pg_host='localhost' --config ssl_mode='require' --config ssl_cert='/path/to/client.crt' --config ssl_key='/path/to/client.key'",
+      "python -m mcp_platform deploy postgres --config pg_host='localhost' --config read_only=false --config max_results=5000"
+    ],
+    "client_integration": {
+      "fastmcp": "from fastmcp.client import FastMCPClient\nclient = FastMCPClient(endpoint='http://localhost:7080')\nresult = client.call('list_schemas', {'database': 'postgres'})",
+      "curl": "curl -X POST http://localhost:7080/call -H 'Content-Type: application/json' -d '{\"method\": \"execute_query\", \"params\": {\"query\": \"SELECT COUNT(*) FROM users\"}}'"
+    }
+  }
+}
