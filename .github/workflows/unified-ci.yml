@@ -306,9 +306,7 @@ jobs:
           --cov-report=xml \
           --cov-fail-under=50 \
           --tb=short \
-          --timeout=300 \
-          --ignore-glob='**/test' \
-          --ignore-glob='**/tests'
+          --timeout=300
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
