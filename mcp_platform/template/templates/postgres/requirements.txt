@@ -1,0 +1,21 @@
+# Core MCP dependencies
+fastmcp>=2.12.2
+starlette
+
+# Database connectivity
+sqlalchemy>=2.0.0
+psycopg>=3.2.10
+psycopg-binary>=3.2.10
+
+# SSH tunneling support
+sshtunnel>=0.4.0
+
+# SQL parsing and validation
+sqlparse
+
+# Utilities
+pydantic>=2.0.0
+python-dotenv
+
+# SSL/TLS support (included with PostgreSQL driver)
+# cryptography (included with psycopg-binary)

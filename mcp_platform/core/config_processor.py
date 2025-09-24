@@ -918,37 +918,67 @@ class ConfigProcessor:
                 result["missing_required"].append(prop)
                 result["valid"] = False
 
-        # Check conditional requirements using anyOf/oneOf
+        # Process inline conditional rule list pattern: anyOf used as collection of independent if/then rules
+        # or traditional anyOf (at least one satisfied). We first scan for if/then usage.
         if "anyOf" in config_schema:
-            any_of_satisfied = False
-            conditional_errors = []
-
-            for i, condition in enumerate(config_schema["anyOf"]):
-                condition_result = ConfigProcessor._check_condition(
-                    condition, config, properties
-                )
-                if condition_result["satisfied"]:
-                    any_of_satisfied = True
-                    break
-                else:
-                    conditional_errors.append(
-                        {
-                            "condition_index": i,
-                            "condition": condition,
-                            "errors": condition_result["errors"],
-                            "missing": condition_result["missing"],
-                        }
+            anyof_items = config_schema["anyOf"]
+            has_inline_if = any(
+                isinstance(item, dict) and "if" in item and "then" in item
+                for item in anyof_items
+            )
+            if has_inline_if:
+                # Treat each element as independent rule; all rules that trigger must have their 'then' requirements satisfied
+                for i, rule in enumerate(anyof_items):
+                    if not isinstance(rule, dict) or "if" not in rule:
+                        continue
+                    if_cond = rule.get("if", {})
+                    then_cond = rule.get("then", {})
+                    if_result = ConfigProcessor._check_condition(
+                        if_cond, config, properties
                     )
-
-            if not any_of_satisfied:
-                result["valid"] = False
-                result["conditional_issues"] = conditional_errors
-
-                # Generate suggestions based on current config
-                suggestions = ConfigProcessor._generate_config_suggestions(
-                    config_schema, config
-                )
-                result["suggestions"] = suggestions
+                    if if_result["satisfied"]:
+                        # Enforce then.required
+                        missing_then = []
+                        for req in then_cond.get("required", []):
+                            if req not in config or config.get(req) in (None, ""):
+                                missing_then.append(req)
+                        if missing_then:
+                            result["valid"] = False
+                            result["conditional_issues"].append(
+                                {
+                                    "rule_index": i,
+                                    "type": "if/then",
+                                    "triggered": True,
+                                    "missing": missing_then,
+                                }
+                            )
+                # no traditional anyOf semantics when inline if/then pattern detected
+            else:
+                any_of_satisfied = False
+                conditional_errors = []
+                for i, condition in enumerate(anyof_items):
+                    condition_result = ConfigProcessor._check_condition(
+                        condition, config, properties
+                    )
+                    if condition_result["satisfied"]:
+                        any_of_satisfied = True
+                        break
+                    else:
+                        conditional_errors.append(
+                            {
+                                "condition_index": i,
+                                "condition": condition,
+                                "errors": condition_result["errors"],
+                                "missing": condition_result["missing"],
+                            }
+                        )
+                if not any_of_satisfied:
+                    result["valid"] = False
+                    result["conditional_issues"].extend(conditional_errors)
+                    suggestions = ConfigProcessor._generate_config_suggestions(
+                        config_schema, config
+                    )
+                    result["suggestions"] = suggestions
 
         if "oneOf" in config_schema:
             satisfied_conditions = 0
@@ -1035,6 +1065,50 @@ class ConfigProcessor:
             except Exception as e:
                 result["valid"] = False
                 result["conditional_issues"].append({"error": str(e)})
+
+        # Support allOf (every condition MUST be satisfied). Supports regular property-based conditions
+        # and mixed with inline if/then semantics inside each element.
+        if "allOf" in config_schema:
+            for i, condition in enumerate(config_schema["allOf"]):
+                if (
+                    isinstance(condition, dict)
+                    and "if" in condition
+                    and "then" in condition
+                ):
+                    # Inline rule style inside allOf
+                    if_res = ConfigProcessor._check_condition(
+                        condition["if"], config, properties
+                    )
+                    if if_res["satisfied"]:
+                        missing_then = [
+                            r
+                            for r in condition["then"].get("required", [])
+                            if r not in config or config.get(r) in (None, "")
+                        ]
+                        if missing_then:
+                            result["valid"] = False
+                            result["conditional_issues"].append(
+                                {
+                                    "clause": "allOf",
+                                    "index": i,
+                                    "missing": missing_then,
+                                }
+                            )
+                    continue
+                # Traditional condition object
+                cond_result = ConfigProcessor._check_condition(
+                    condition, config, properties
+                )
+                if not cond_result["satisfied"]:
+                    result["valid"] = False
+                    result["conditional_issues"].append(
+                        {
+                            "clause": "allOf",
+                            "index": i,
+                            "errors": cond_result["errors"],
+                            "missing": cond_result["missing"],
+                        }
+                    )
 
         return result
 

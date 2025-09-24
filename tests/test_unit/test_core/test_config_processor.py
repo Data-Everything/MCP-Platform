@@ -1483,3 +1483,235 @@ class TestConditionalConfigValidator:
 
         # Should be valid because there are no required fields or conditional constraints
         assert result["valid"] is True
+
+
+@pytest.mark.unit
+class TestInlineAnyOfConditionalRules:
+    """Tests for newly added inline anyOf rule-list conditional enforcement.
+
+    These tests cover schemas that express multiple independent if/then rules
+    inside an anyOf array (rule-list mode). Each rule is evaluated and if its
+    'if' condition matches, its 'then.required' fields must be present. This
+    differs from classic JSON Schema anyOf semantics (choice/alternatives) and
+    reflects the extended behavior implemented in ConfigProcessor.
+    """
+
+    def test_inline_anyof_password_missing(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "auth_method": {"type": "string", "enum": ["password", "cert"]},
+                "password": {"type": "string"},
+                "cert_path": {"type": "string"},
+                "key_path": {"type": "string"},
+            },
+            "required": ["auth_method"],
+            "anyOf": [
+                {
+                    "if": {"properties": {"auth_method": {"const": "password"}}},
+                    "then": {"required": ["password"]},
+                },
+                {
+                    "if": {"properties": {"auth_method": {"const": "cert"}}},
+                    "then": {"required": ["cert_path", "key_path"]},
+                },
+            ],
+        }
+
+        config = {"auth_method": "password"}  # missing password
+        res = ConfigProcessor.validate_config_schema(schema, config)
+        assert res["valid"] is False
+        # Ensure password flagged as missing either directly or via conditional issue
+        assert "password" in res.get("missing_required", []) or any(
+            "password" in (issue.get("missing") or [])
+            for issue in res.get("conditional_issues", [])
+        )
+
+    def test_inline_anyof_password_present(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "auth_method": {"type": "string", "enum": ["password", "cert"]},
+                "password": {"type": "string"},
+                "cert_path": {"type": "string"},
+                "key_path": {"type": "string"},
+            },
+            "required": ["auth_method"],
+            "anyOf": [
+                {
+                    "if": {"properties": {"auth_method": {"const": "password"}}},
+                    "then": {"required": ["password"]},
+                },
+                {
+                    "if": {"properties": {"auth_method": {"const": "cert"}}},
+                    "then": {"required": ["cert_path", "key_path"]},
+                },
+            ],
+        }
+        config = {"auth_method": "password", "password": "secret"}
+        res = ConfigProcessor.validate_config_schema(schema, config)
+        assert res["valid"] is True
+
+    def test_inline_anyof_cert_missing_key(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "auth_method": {"type": "string", "enum": ["password", "cert"]},
+                "password": {"type": "string"},
+                "cert_path": {"type": "string"},
+                "key_path": {"type": "string"},
+            },
+            "required": ["auth_method"],
+            "anyOf": [
+                {
+                    "if": {"properties": {"auth_method": {"const": "password"}}},
+                    "then": {"required": ["password"]},
+                },
+                {
+                    "if": {"properties": {"auth_method": {"const": "cert"}}},
+                    "then": {"required": ["cert_path", "key_path"]},
+                },
+            ],
+        }
+        config = {"auth_method": "cert", "cert_path": "/p/cert.crt"}  # missing key_path
+        res = ConfigProcessor.validate_config_schema(schema, config)
+        assert res["valid"] is False
+        assert "key_path" in res.get("missing_required", []) or any(
+            "key_path" in (issue.get("missing") or [])
+            for issue in res.get("conditional_issues", [])
+        )
+
+
+@pytest.mark.unit
+class TestAllOfConditionalRules:
+    """Tests for allOf support with independent conditional blocks."""
+
+    def test_allof_multiple_conditions(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "feature_a_enabled": {"type": "boolean"},
+                "feature_b_enabled": {"type": "boolean"},
+                "a_api_key": {"type": "string"},
+                "b_api_key": {"type": "string"},
+            },
+            "allOf": [
+                {
+                    "if": {"properties": {"feature_a_enabled": {"const": True}}},
+                    "then": {"required": ["a_api_key"]},
+                },
+                {
+                    "if": {"properties": {"feature_b_enabled": {"const": True}}},
+                    "then": {"required": ["b_api_key"]},
+                },
+            ],
+        }
+
+        # Enable both but supply only one key -> invalid
+        config = {
+            "feature_a_enabled": True,
+            "feature_b_enabled": True,
+            "a_api_key": "AAA",
+        }
+        res = ConfigProcessor.validate_config_schema(schema, config)
+        assert res["valid"] is False
+        assert "b_api_key" in res.get("missing_required", []) or any(
+            "b_api_key" in (issue.get("missing") or [])
+            for issue in res.get("conditional_issues", [])
+        )
+
+        # Provide both keys -> valid
+        config["b_api_key"] = "BBB"
+        res2 = ConfigProcessor.validate_config_schema(schema, config)
+        assert res2["valid"] is True
+
+        # Enable none -> valid (no keys required)
+        res3 = ConfigProcessor.validate_config_schema(schema, {})
+        assert res3["valid"] is True
+
+
+@pytest.mark.unit
+class TestTemplateNormalizationInlineRules:
+    """Integration-style tests for template-normalization path with inline anyOf rules (postgres-like)."""
+
+    def test_postgres_like_missing_password(self):
+        template = {
+            "config_schema": {
+                "type": "object",
+                "properties": {
+                    "pg_host": {"type": "string", "env_mapping": "PG_HOST"},
+                    "pg_user": {"type": "string", "env_mapping": "PG_USER"},
+                    "pg_password": {"type": "string", "env_mapping": "PG_PASSWORD"},
+                    "auth_method": {
+                        "type": "string",
+                        "enum": ["password", "cert"],
+                        "env_mapping": "PG_AUTH_METHOD",
+                    },
+                    "pg_ssl_cert": {"type": "string", "env_mapping": "PG_SSL_CERT"},
+                    "pg_ssl_key": {"type": "string", "env_mapping": "PG_SSL_KEY"},
+                },
+                "required": ["pg_host", "pg_user"],
+                "anyOf": [
+                    {
+                        "if": {"properties": {"auth_method": {"const": "password"}}},
+                        "then": {"required": ["pg_password"]},
+                    },
+                    {
+                        "if": {"properties": {"auth_method": {"const": "cert"}}},
+                        "then": {"required": ["pg_ssl_cert", "pg_ssl_key"]},
+                    },
+                ],
+            }
+        }
+
+        # Provide env vars missing password while auth_method=password
+        env_vars = {
+            "PG_HOST": "localhost",
+            "PG_USER": "analyst",
+            "PG_AUTH_METHOD": "password",
+        }
+        result = ConfigProcessor().validate_config(template, env_vars=env_vars)
+        assert result.valid is False
+        assert "pg_password" in result.missing_required or any(
+            "pg_password" in (issue.get("missing") or [])
+            for issue in result.conditional_issues
+        )
+
+    def test_postgres_like_password_present(self):
+        template = {
+            "config_schema": {
+                "type": "object",
+                "properties": {
+                    "pg_host": {"type": "string", "env_mapping": "PG_HOST"},
+                    "pg_user": {"type": "string", "env_mapping": "PG_USER"},
+                    "pg_password": {"type": "string", "env_mapping": "PG_PASSWORD"},
+                    "auth_method": {
+                        "type": "string",
+                        "enum": ["password", "cert"],
+                        "env_mapping": "PG_AUTH_METHOD",
+                    },
+                    "pg_ssl_cert": {"type": "string", "env_mapping": "PG_SSL_CERT"},
+                    "pg_ssl_key": {"type": "string", "env_mapping": "PG_SSL_KEY"},
+                },
+                "required": ["pg_host", "pg_user"],
+                "anyOf": [
+                    {
+                        "if": {"properties": {"auth_method": {"const": "password"}}},
+                        "then": {"required": ["pg_password"]},
+                    },
+                    {
+                        "if": {"properties": {"auth_method": {"const": "cert"}}},
+                        "then": {"required": ["pg_ssl_cert", "pg_ssl_key"]},
+                    },
+                ],
+            }
+        }
+
+        env_vars = {
+            "PG_HOST": "localhost",
+            "PG_USER": "analyst",
+            "PG_AUTH_METHOD": "password",
+            "PG_PASSWORD": "secret",
+        }
+        result = ConfigProcessor().validate_config(template, env_vars=env_vars)
+        assert result.valid is True
