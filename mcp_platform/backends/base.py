@@ -2,6 +2,7 @@
 Deployment backend interface for managing deployments across different platforms.
 """
 
+import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
@@ -151,3 +152,14 @@ class BaseDeploymentBackend(ABC):
         """
 
         self._config = config
+
+    @staticmethod
+    def resolve_host_path(path):
+        """
+        Resolve host path, expanding ~ to the host's home directory if HOST_HOME is set.
+        """
+
+        host_home = os.environ.get("HOST_HOME")
+        if host_home:
+            return path.replace("~", host_home, 1)
+        return os.path.expanduser(path)

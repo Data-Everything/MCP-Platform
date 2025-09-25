@@ -53,11 +53,10 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def app_lifespan(app: FastAPI):
     """Application lifespan management."""
     # Startup
     logger.info("Starting MCP Gateway server...")
-
     # Initialize database
     config = app.state.config
     db = await initialize_database(config)
@@ -148,7 +147,7 @@ class MCPGatewayServer:
             title="MCP Gateway",
             description="Enhanced unified HTTP gateway for Model Context Protocol servers",
             version="2.0.0",
-            lifespan=lifespan,
+            lifespan=app_lifespan,
         )
 
         # Store config in app state

@@ -8,7 +8,8 @@ and optional database persistence capabilities.
 import os
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, ClassVar, Dict, List, Optional
 
 from pydantic import field_validator
 from sqlmodel import JSON, Column
@@ -310,6 +311,8 @@ class APIKey(APIKeyBase, table=True):
 
     id: Optional[int] = SQLField(default=None, primary_key=True)
     key_hash: str = SQLField(index=True)
+    # HMAC of the secret (server-keyed) used for indexed lookups
+    key_hmac: Optional[str] = SQLField(default=None, index=True)
     user_id: int = SQLField(foreign_key="users.id")
     created_at: datetime = SQLField(default_factory=lambda: datetime.now(timezone.utc))
     last_used: Optional[datetime] = None
@@ -321,7 +324,7 @@ class APIKey(APIKeyBase, table=True):
         """Check if API key is expired."""
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at.astimezone(tz=timezone.utc)
 
 
 class APIKeyCreate(APIKeyBase):
@@ -406,7 +409,9 @@ class TokenResponse(SQLModel):
 class DatabaseConfig(SQLModel):
     """Database configuration model."""
 
-    url: str = "sqlite:///./gateway.db"
+    # Default to a per-user data directory under the user's home directory
+    default_db: ClassVar[Path] = Path.home() / ".mcp" / "gateway.db"
+    url: str = f"sqlite:///{default_db}"
     echo: bool = False
     pool_size: int = 5
     max_overflow: int = 10
