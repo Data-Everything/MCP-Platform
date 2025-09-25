@@ -1215,24 +1215,6 @@ async def main():
     # Update mkdocs navigation dynamically
     update_mkdocs_nav(template_docs, mkdocs_file)
 
-    # Generate Gateway API documentation
-    print("📝 Generating Gateway API documentation...")
-    try:
-        from scripts.generate_gateway_docs import generate_gateway_api_docs
-
-        generate_gateway_api_docs()
-        print("✅ Gateway API documentation generated successfully")
-    except Exception as e:
-        print(f"⚠️  Warning: Could not generate Gateway API docs: {e}")
-
-    # Build documentation
-    if build_docs():
-        print("🎉 Documentation build completed successfully!")
-        print("📁 Documentation available in site/ directory")
-    else:
-        print("❌ Documentation build failed")
-        sys.exit(1)
-
 
 if __name__ == "__main__":
     asyncio.run(main())

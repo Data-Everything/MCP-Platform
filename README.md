@@ -78,9 +78,6 @@ mcpp logs demo
 ### 🖱️ **One-Click Deployment**
 Deploy MCP servers instantly with pre-built templates—no Docker knowledge required.
 
-### 🌐 **Enterprise Gateway**
-Production-ready load balancer with authentication, database persistence, and advanced routing. [See gateway documentation](mcp_platform/gateway/README.md) for enterprise deployment details.
-
 ### 🔍 **Smart Tool Discovery**
 Automatically finds and showcases every tool your server offers.
 

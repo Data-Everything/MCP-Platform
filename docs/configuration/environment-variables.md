@@ -119,40 +119,6 @@ MCP Templates supports various environment variables to configure system behavio
   export MCP_DEFAULT_REGISTRY=ghcr.io
   ```
 
-## Gateway & Runtime
-
-### DATABASE_URL / MCP_GATEWAY_DATABASE_URL
-- **Description**: Database connection URL used by the gateway and maintenance scripts (Alembic, one-off scripts).
-- **Default**: Per-user SQLite file (e.g. `sqlite:///~/.mcp/gateway.db`) when not set.
-- **Type**: String (SQLAlchemy-style database URL)
-- **Usage**: Used by the gateway, migration scripts (`alembic`), and helper scripts (for example `scripts/add_key_hmac.py`). In production you should set this to your Postgres/MySQL connection string.
-- **Security / MUST CHANGE**: Yes — DO NOT use the development SQLite default in production. Provide a managed RDBMS connection string and credentials via secure configuration management.
-- **Example**:
-  ```bash
-  export DATABASE_URL=postgresql+asyncpg://user:password@db-host:5432/gateway_db
-  # or the project-specific alias
-  export MCP_GATEWAY_DATABASE_URL="$DATABASE_URL"
-  ```
-
-### MCP_PLATFORM_AUTH_SECRET_KEY
-- **Description**: Server-side secret used by the gateway authentication subsystem (default used by `AuthConfig`).
-- **Default**: `change-this-in-production` (development default)
-- **Type**: String
-- **Usage**: Used as a secret key for signing tokens and HMAC operations depending on configuration.
-- **Security / MUST CHANGE**: Yes — replace this with a cryptographically strong secret in production. Store it in your secret manager; do not commit to source control.
-- **Example**:
-  ```bash
-  export MCP_PLATFORM_AUTH_SECRET_KEY=$(openssl rand -base64 32)
-  ```
-
-### GATEWAY_SECRET_KEY
-- **Description**: Alternative/env-targeted secret read by the gateway CLI at startup (used as JWT/session secret if provided via env).
-- **Default**: `dev-key-to-be-changed` (development default shown by CLI)
-- **Type**: String
-- **Usage**: CLI/startup can pick this up to seed `AuthConfig.secret_key` when starting the gateway.
-- **Security / MUST CHANGE**: Yes — treat as a production secret and rotate periodically.
-
-
 ## Template Configuration
 
 ### MCP_TRANSPORT

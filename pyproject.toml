@@ -20,19 +20,9 @@ dependencies = [
     "aiohttp>=3.8.0",
     "setuptools_scm>=8.3.1",
     "typer>=0.16.0",
-    "kubernetes>=33.1.0",
-    "fastapi>=0.116.1",
-    "uvicorn>=0.35.0",
-    "pydantic>=2.0.0",
-    "sqlmodel>=0.0.8",
-    "sqlalchemy>=2.0.0",
-    "python-jose[cryptography]>=3.3.0",
-    "passlib[bcrypt]>=1.7.4",
-    "python-multipart>=0.0.6",
-    # Default SQLite support for gateway
-    "aiosqlite>=0.21.0",
+    "kubernetes>=33.1.0"
 ]
-keywords = ["MCP", "Model Context Protocol", "AI Platform", "Server Deployment", "Docker", "Kubernetes", "MCP Platform", "Unified Gateway"]
+keywords = ["MCP", "Model Context Protocol", "AI Platform", "Server Deployment", "Docker", "Kubernetes", "MCP Platform"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -44,28 +34,6 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Systems Administration",
-]
-
-[project.optional-dependencies]
-# Database drivers for gateway (SQLite included by default)
-postgresql = [
-    "asyncpg>=0.29.0",
-]
-mysql = [
-    "aiomysql>=0.2.0",
-]
-oracle = [
-    "cx_Oracle_async>=0.4.0",
-]
-mssql = [
-    "aioodbc>=0.4.0",
-]
-# All database drivers
-all-databases = [
-    "asyncpg>=0.29.0",
-    "aiomysql>=0.2.0",
-    "cx_Oracle_async>=0.4.0",
-    "aioodbc>=0.4.0",
 ]
 
 [project.urls]

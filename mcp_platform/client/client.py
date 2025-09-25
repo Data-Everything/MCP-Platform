@@ -65,7 +65,6 @@ class MCPClient:
     - Listing and calling tools
     - Managing server instances
     - Template discovery
-    - Gateway integration for enterprise features
 
     Consolidates functionality from both MCPClient and CoreMCPClient for simplicity.
     """
@@ -74,8 +73,6 @@ class MCPClient:
         self,
         backend_type: str = "docker",
         timeout: int = 30,
-        gateway_url: Optional[str] = None,
-        api_key: Optional[str] = None,
     ):
         """
         Initialize MCP Client.
@@ -83,16 +80,9 @@ class MCPClient:
         Args:
             backend_type: Deployment backend (docker, kubernetes, mock)
             timeout: Default timeout for operations in seconds
-            gateway_url: Optional gateway URL for enterprise features
-            api_key: Optional API key for gateway authentication
         """
         self.backend_type = backend_type
         self.timeout = timeout
-
-        # Gateway integration
-        self.gateway_url = gateway_url
-        self.api_key = api_key
-        self._gateway_client = None
 
         # Initialize core managers
         self.template_manager = TemplateManager(backend_type)
@@ -983,81 +973,6 @@ class MCPClient:
         connection_ids = list(self._active_connections.keys())
         for connection_id in connection_ids:
             await self.disconnect(connection_id)
-
-        # Close gateway client if exists
-        if self._gateway_client:
-            await self._gateway_client.close()
-            self._gateway_client = None
-
-    def _get_gateway_client(self):
-        """Get or create gateway client for gateway operations."""
-        if not self.gateway_url:
-            raise ValueError("Gateway URL not configured. Set gateway_url parameter.")
-
-        if not self._gateway_client:
-            from mcp_platform.gateway.client import GatewayClient
-
-            self._gateway_client = GatewayClient(
-                base_url=self.gateway_url, api_key=self.api_key, timeout=self.timeout
-            )
-        return self._gateway_client
-
-    # Gateway-integrated methods
-    async def call_tool_via_gateway(
-        self, template_name: str, tool_name: str, arguments: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """
-        Call a tool through the gateway with automatic fallback.
-
-        Args:
-            template_name: Template name
-            tool_name: Tool name to call
-            arguments: Tool arguments
-
-        Returns:
-            Tool execution result
-        """
-        if self.gateway_url:
-            try:
-                gateway_client = self._get_gateway_client()
-                return await gateway_client.call_tool(
-                    template_name, tool_name, arguments
-                )
-            except Exception as e:
-                logger.warning("Gateway call failed, falling back to direct: %s", e)
-
-        # Fallback to direct call
-        return await self.call_tool(template_name, tool_name, arguments)
-
-    async def list_tools_via_gateway(self, template_name: str) -> List[Dict[str, Any]]:
-        """
-        List tools through the gateway with automatic fallback.
-
-        Args:
-            template_name: Template name
-
-        Returns:
-            List of available tools
-        """
-        if self.gateway_url:
-            try:
-                gateway_client = self._get_gateway_client()
-                return await gateway_client.list_tools(template_name)
-            except Exception as e:
-                logger.warning("Gateway call failed, falling back to direct: %s", e)
-
-        # Fallback to direct call
-        return await self.list_tools(template_name)
-
-    async def get_gateway_health(self) -> Dict[str, Any]:
-        """Get gateway health status."""
-        gateway_client = self._get_gateway_client()
-        return await gateway_client.health_check()
-
-    async def get_gateway_stats(self) -> Dict[str, Any]:
-        """Get gateway statistics."""
-        gateway_client = self._get_gateway_client()
-        return await gateway_client.get_stats()
 
     async def __aenter__(self):
         """Async context manager entry."""

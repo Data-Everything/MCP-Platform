@@ -31,10 +31,6 @@ Join our [Discord Community](https://discord.gg/55Cfxe9gnr) for support, discuss
 
     Complete command reference for the `mcpp` CLI tool
 
--   🌐 **[Gateway](gateway/index.md)**
-
-    Unified load balancer and proxy for accessing all MCP server instances
-
 -   📦 **[Server Templates](templates/index.md)**
 
     Browse available templates with advanced configuration properties and deployment options
@@ -75,28 +71,6 @@ MCP Platform is a **self-hosted deployment system** that enables rapid deploymen
 - **📱 Interactive CLI**: Streamlined command-line interface for all operations
 - **🔄 Lifecycle Management**: Deploy, configure, monitor, and cleanup with ease
 - **🎯 Multiple Templates**: Pre-built servers for GitHub, Zendesk, GitLab, and more
-- **🌐 Gateway System**: Unified load balancer and proxy for accessing all MCP instances
-
-## 🌐 MCP Gateway
-
-The **MCP Gateway** is a production-ready load balancer and proxy system that provides unified access to all your MCP server instances. Instead of connecting to each server individually, use the gateway for:
-
-- **Single Endpoint**: Access all templates through one URL
-- **Load Balancing**: Automatic request distribution across healthy instances
-- **Health Monitoring**: Continuous monitoring with automatic failover
-- **High Availability**: No single point of failure
-- **Transport Agnostic**: Works with both HTTP and stdio servers
-
-```bash
-# Start gateway with auto-discovery
-mcpp gateway start --sync
-
-# Access any template through unified endpoint
-curl http://localhost:8080/mcp/filesystem/tools/list
-curl http://localhost:8080/mcp/github/tools/call -d '{"name": "list_repos"}'
-```
-
-→ **[Learn more about the Gateway](gateway/index.md)**
 
 ## 📋 Available Templates
 

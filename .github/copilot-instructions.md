@@ -44,7 +44,6 @@ Use appropriate pytest markers to categorize tests:
 - `@pytest.mark.integration` - Integration tests (slower, external dependencies)
 - `@pytest.mark.docker` - Tests requiring Docker
 - `@pytest.mark.kubernetes` - Tests requiring Kubernetes
-- `@pytest.mark.gateway` - Tests requiring Gateway
 - `@pytest.mark.slow` - Long-running tests
 - `@pytest.mark.template` - Template-specific tests
 - `@pytest.mark.e2e` - End-to-end tests

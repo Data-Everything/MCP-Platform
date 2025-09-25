@@ -1,5 +1,4 @@
 """
-Test runner script for the enhanced MCP Gateway system.
 Provides convenient commands to run different test suites with proper coverage reporting.
 """
 
@@ -35,7 +34,6 @@ def run_unit_tests(verbose=False, coverage=True):
     if coverage:
         cmd.extend(
             [
-                "--cov=mcp_platform.gateway",
                 "--cov-report=html:htmlcov",
                 "--cov-report=xml:coverage.xml",
                 "--cov-report=term-missing",

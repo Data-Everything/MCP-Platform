@@ -31,12 +31,6 @@ from mcp_platform.core import DeploymentManager as CommonDeploymentManager
 from mcp_platform.core import TemplateManager, ToolManager
 from mcp_platform.core.deployment_manager import DeploymentManager
 
-# from mcp_platform.gateway import (
-#     HealthChecker,
-#     LoadBalancer,
-#     MCPGatewayServer,
-#     ServerRegistry,
-# )
 from mcp_platform.template.utils.creation import TemplateCreator
 from mcp_platform.template.utils.discovery import TemplateDiscovery
 
@@ -50,7 +44,6 @@ __all__ = [
     "TemplateManager",
     "CommonDeploymentManager",
     "ToolManager",
-    # "MCPGatewayServer",
     # "ServerRegistry",
     # "LoadBalancer",
     # "HealthChecker",
