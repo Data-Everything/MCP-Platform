@@ -41,13 +41,8 @@ import logging
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Union
 
-from mcp_platform.core import (
-    DeploymentManager,
-    MCPConnection,
-    TemplateManager,
-    ToolCaller,
-    ToolManager,
-)
+from mcp_platform.core import (DeploymentManager, MCPConnection,
+                               TemplateManager, ToolCaller, ToolManager)
 from mcp_platform.core.config_processor import ConfigProcessor
 from mcp_platform.core.deployment_manager import DeploymentOptions
 from mcp_platform.core.multi_backend_manager import MultiBackendManager
