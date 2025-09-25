@@ -14,14 +14,9 @@ from typer.testing import CliRunner
 
 pytestmark = pytest.mark.unit
 
-from mcp_platform.cli.cli import (
-    AliasGroup,
-    app,
-    cli_state,
-    format_discovery_hint,
-    setup_logging,
-    split_command_args,
-)
+from mcp_platform.cli.cli import (AliasGroup, app, cli_state,
+                                  format_discovery_hint, setup_logging,
+                                  split_command_args)
 
 
 class TestCLIUtilities:

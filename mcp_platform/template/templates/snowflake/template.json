@@ -1,0 +1,545 @@
+{
+  "id": "snowflake",
+  "name": "Snowflake MCP Server",
+  "description": "Production-ready Snowflake MCP server for secure data warehouse access with configurable authentication, read-only mode, and comprehensive query capabilities using FastMCP and Snowflake Python Connector",
+  "version": "1.0.0",
+  "author": "Data Everything",
+  "category": "Database",
+  "tags": [
+    "snowflake",
+    "sql",
+    "database",
+    "datawarehouse",
+    "cloud",
+    "fastmcp",
+    "analytics"
+  ],
+  "docker_image": "dataeverything/mcp-snowflake",
+  "docker_tag": "latest",
+  "ports": {
+    "7081": 7081
+  },
+  "command": [],
+  "transport": {
+    "default": "http",
+    "supported": ["http", "stdio"],
+    "port": 7081
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "account": {
+        "type": "string",
+        "title": "Snowflake Account",
+        "description": "Snowflake account identifier (e.g., myorg-myaccount)",
+        "env_mapping": "SNOWFLAKE_ACCOUNT",
+        "pattern": "^[a-zA-Z0-9._-]+$"
+      },
+      "user": {
+        "type": "string",
+        "title": "Snowflake User",
+        "description": "Username for Snowflake authentication",
+        "env_mapping": "SNOWFLAKE_USER"
+      },
+      "password": {
+        "type": "string",
+        "title": "Snowflake Password",
+        "description": "Password for Snowflake authentication (required for password auth)",
+        "env_mapping": "SNOWFLAKE_PASSWORD",
+        "sensitive": true
+      },
+      "authenticator": {
+        "type": "string",
+        "title": "Authentication Method",
+        "description": "Snowflake authentication method",
+        "enum": ["snowflake", "oauth", "externalbrowser", "okta_endpoint", "jwt"],
+        "default": "snowflake",
+        "env_mapping": "SNOWFLAKE_AUTHENTICATOR"
+      },
+      "private_key": {
+        "type": "string",
+        "title": "Private Key Content",
+        "description": "RSA private key content for key-pair authentication (PEM format)",
+        "env_mapping": "SNOWFLAKE_PRIVATE_KEY",
+        "sensitive": true
+      },
+      "private_key_file": {
+        "type": "string",
+        "title": "Private Key File Path",
+        "description": "Path to RSA private key file for key-pair authentication",
+        "env_mapping": "SNOWFLAKE_PRIVATE_KEY_FILE"
+      },
+      "private_key_passphrase": {
+        "type": "string",
+        "title": "Private Key Passphrase",
+        "description": "Passphrase for encrypted private key",
+        "env_mapping": "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE",
+        "sensitive": true
+      },
+      "oauth_token": {
+        "type": "string",
+        "title": "OAuth Token",
+        "description": "OAuth access token for OAuth authentication",
+        "env_mapping": "SNOWFLAKE_OAUTH_TOKEN",
+        "sensitive": true
+      },
+      "jwt_token": {
+        "type": "string",
+        "title": "JWT Token",
+        "description": "JWT token for JWT authentication",
+        "env_mapping": "SNOWFLAKE_JWT_TOKEN",
+        "sensitive": true
+      },
+      "okta_endpoint": {
+        "type": "string",
+        "title": "Okta Endpoint",
+        "description": "Okta endpoint URL for Okta SSO authentication",
+        "env_mapping": "SNOWFLAKE_OKTA_ENDPOINT",
+        "format": "uri"
+      },
+      "database": {
+        "type": "string",
+        "title": "Database Name",
+        "description": "Default Snowflake database to connect to",
+        "env_mapping": "SNOWFLAKE_DATABASE"
+      },
+      "schema": {
+        "type": "string",
+        "title": "Schema Name",
+        "description": "Default Snowflake schema to use",
+        "default": "PUBLIC",
+        "env_mapping": "SNOWFLAKE_SCHEMA"
+      },
+      "warehouse": {
+        "type": "string",
+        "title": "Warehouse Name",
+        "description": "Snowflake warehouse to use for compute",
+        "env_mapping": "SNOWFLAKE_WAREHOUSE"
+      },
+      "role": {
+        "type": "string",
+        "title": "Role Name",
+        "description": "Snowflake role to assume",
+        "env_mapping": "SNOWFLAKE_ROLE"
+      },
+      "region": {
+        "type": "string",
+        "title": "Region",
+        "description": "Snowflake region (if not included in account identifier)",
+        "env_mapping": "SNOWFLAKE_REGION"
+      },
+      "connection_timeout": {
+        "type": "integer",
+        "title": "Connection Timeout",
+        "description": "Connection timeout in seconds",
+        "default": 60,
+        "minimum": 10,
+        "maximum": 900,
+        "env_mapping": "SNOWFLAKE_CONNECTION_TIMEOUT"
+      },
+      "query_timeout": {
+        "type": "integer",
+        "title": "Query Timeout",
+        "description": "Query execution timeout in seconds",
+        "default": 3600,
+        "minimum": 60,
+        "maximum": 21600,
+        "env_mapping": "SNOWFLAKE_QUERY_TIMEOUT"
+      },
+      "max_results": {
+        "type": "integer",
+        "title": "Maximum Query Results",
+        "description": "Maximum number of rows to return from queries",
+        "default": 10000,
+        "minimum": 1,
+        "maximum": 100000,
+        "env_mapping": "SNOWFLAKE_MAX_RESULTS"
+      },
+      "read_only": {
+        "type": "boolean",
+        "title": "Read Only Mode",
+        "description": "Run the server in read-only mode (blocks write queries)",
+        "default": true,
+        "env_mapping": "SNOWFLAKE_READ_ONLY"
+      },
+      "allowed_databases": {
+        "type": "string",
+        "title": "Allowed Databases",
+        "description": "Comma-separated list or regex pattern of allowed databases",
+        "default": "*",
+        "env_mapping": "SNOWFLAKE_ALLOWED_DATABASES"
+      },
+      "allowed_schemas": {
+        "type": "string",
+        "title": "Allowed Schemas",
+        "description": "Comma-separated list or regex pattern of allowed schemas",
+        "default": "*",
+        "env_mapping": "SNOWFLAKE_ALLOWED_SCHEMAS"
+      },
+      "insecure_mode": {
+        "type": "boolean",
+        "title": "Insecure Mode",
+        "description": "Disable SSL certificate verification (not recommended for production)",
+        "default": false,
+        "env_mapping": "SNOWFLAKE_INSECURE_MODE"
+      },
+      "ocsp_response_cache_filename": {
+        "type": "string",
+        "title": "OCSP Response Cache File",
+        "description": "Path to OCSP response cache file for improved SSL performance",
+        "env_mapping": "SNOWFLAKE_OCSP_RESPONSE_CACHE_FILENAME"
+      },
+      "session_parameters": {
+        "type": "object",
+        "title": "Session Parameters",
+        "description": "Additional session parameters to set upon connection",
+        "env_mapping": "SNOWFLAKE_SESSION_PARAMETERS",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "client_session_keep_alive": {
+        "type": "boolean",
+        "title": "Keep Session Alive",
+        "description": "Enable client session keep-alive to prevent timeouts",
+        "default": false,
+        "env_mapping": "SNOWFLAKE_CLIENT_SESSION_KEEP_ALIVE"
+      },
+      "log_level": {
+        "type": "string",
+        "title": "Log Level",
+        "description": "Logging level for the server",
+        "enum": [
+          "debug",
+          "info",
+          "warning",
+          "error"
+        ],
+        "default": "info",
+        "env_mapping": "MCP_LOG_LEVEL"
+      }
+    },
+    "required": ["account", "user"],
+    "anyOf": [
+      {
+        "if": {
+          "properties": {
+            "authenticator": {"const": "snowflake"}
+          }
+        },
+        "then": {
+          "title": "Password Authentication",
+          "description": "Use username/password authentication",
+          "required": ["password"]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "authenticator": {"const": "jwt"}
+          }
+        },
+        "then": {
+          "title": "Key Pair Authentication",
+          "description": "Use RSA key-pair authentication",
+          "anyOf": [
+            {
+              "title": "Private Key Content",
+              "description": "Provide private key as content",
+              "required": ["private_key"]
+            },
+            {
+              "title": "Private Key File",
+              "description": "Provide private key as file path",
+              "required": ["private_key_file"]
+            }
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "authenticator": {"const": "oauth"}
+          }
+        },
+        "then": {
+          "title": "OAuth Authentication",
+          "description": "Use OAuth token authentication",
+          "required": ["oauth_token"]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "authenticator": {"const": "externalbrowser"}
+          }
+        },
+        "then": {
+          "title": "External Browser Authentication",
+          "description": "Use external browser for SSO authentication"
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "authenticator": {"const": "okta_endpoint"}
+          }
+        },
+        "then": {
+          "title": "Okta SSO Authentication",
+          "description": "Use Okta SSO authentication",
+          "required": ["okta_endpoint"]
+        }
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "name": "Database Discovery",
+      "description": "List and explore Snowflake databases and schemas",
+      "example": "List all accessible databases, browse schema information, get database metadata"
+    },
+    {
+      "name": "Table Inspection",
+      "description": "Inspect table schemas, columns, and constraints",
+      "example": "Get detailed schema for tables, view column types, examine data types"
+    },
+    {
+      "name": "Query Execution",
+      "description": "Execute SQL queries against Snowflake data warehouse",
+      "example": "Run SELECT queries, analyze data, generate reports (read-only by default)"
+    },
+    {
+      "name": "Query Planning",
+      "description": "Analyze query execution plans and performance",
+      "example": "Get EXPLAIN plans, identify performance bottlenecks, optimize queries"
+    },
+    {
+      "name": "Access Control",
+      "description": "Configurable database and schema access controls",
+      "example": "Filter accessible databases/schemas, enforce read-only mode, pattern-based access"
+    },
+    {
+      "name": "Multi-Authentication",
+      "description": "Support for multiple Snowflake authentication methods",
+      "example": "Password, key-pair, OAuth, SSO, external browser authentication"
+    },
+    {
+      "name": "Session Management",
+      "description": "Advanced session parameter configuration and keep-alive",
+      "example": "Custom session parameters, connection pooling, timeout management"
+    }
+  ],
+  "tools": [
+    {
+      "name": "list_databases",
+      "description": "List all accessible databases in Snowflake",
+      "parameters": []
+    },
+    {
+      "name": "list_schemas",
+      "description": "List all accessible schemas in a database",
+      "parameters": [
+        {
+          "name": "database",
+          "description": "Database name to list schemas from",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "list_tables",
+      "description": "List tables in a specific schema",
+      "parameters": [
+        {
+          "name": "schema",
+          "description": "Schema name to list tables from",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "database",
+          "description": "Database name containing the schema",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "describe_table",
+      "description": "Get detailed schema information for a table",
+      "parameters": [
+        {
+          "name": "table",
+          "description": "Table name to describe",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "schema",
+          "description": "Schema name containing the table",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "database",
+          "description": "Database name containing the schema",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "list_columns",
+      "description": "List columns in a specific table",
+      "parameters": [
+        {
+          "name": "table",
+          "description": "Table name to list columns from",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "schema",
+          "description": "Schema name containing the table",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "database",
+          "description": "Database name containing the schema",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "execute_query",
+      "description": "Execute a SQL query against Snowflake (subject to read-only restrictions)",
+      "parameters": [
+        {
+          "name": "query",
+          "description": "SQL query to execute",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "description": "Maximum number of rows to return (optional)",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "explain_query",
+      "description": "Get query execution plan for a SQL query",
+      "parameters": [
+        {
+          "name": "query",
+          "description": "SQL query to explain",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_warehouse_info",
+      "description": "Get information about the current Snowflake warehouse",
+      "parameters": []
+    },
+    {
+      "name": "list_warehouses",
+      "description": "List available Snowflake warehouses",
+      "parameters": []
+    },
+    {
+      "name": "get_account_info",
+      "description": "Get information about the Snowflake account",
+      "parameters": []
+    },
+    {
+      "name": "get_current_role",
+      "description": "Get the current Snowflake role",
+      "parameters": []
+    },
+    {
+      "name": "list_roles",
+      "description": "List available Snowflake roles",
+      "parameters": []
+    },
+    {
+      "name": "get_table_stats",
+      "description": "Get statistics for a specific table",
+      "parameters": [
+        {
+          "name": "table",
+          "description": "Table name to get statistics for",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "schema",
+          "description": "Schema name containing the table",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "database",
+          "description": "Database name containing the schema",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "test_connection",
+      "description": "Test the Snowflake connection",
+      "parameters": []
+    },
+    {
+      "name": "get_connection_info",
+      "description": "Get information about the current Snowflake connection",
+      "parameters": []
+    }
+  ],
+  "tool_discovery": "static",
+  "response_formatter": {
+    "enabled": true,
+    "tools": [
+      "list_databases",
+      "list_schemas",
+      "list_tables",
+      "describe_table",
+      "list_columns",
+      "execute_query",
+      "explain_query",
+      "get_warehouse_info",
+      "list_warehouses",
+      "get_account_info",
+      "get_current_role",
+      "list_roles",
+      "get_table_stats",
+      "test_connection",
+      "get_connection_info"
+    ]
+  },
+  "tool_endpoint": "/tools",
+  "has_image": true,
+  "origin": "internal",
+  "examples": {
+    "http_endpoint": "http://localhost:7081",
+    "cli_usage": [
+      "python -m mcp_platform deploy snowflake --config account='myorg-account' --config user='myuser' --config password='secret'",
+      "python -m mcp_platform deploy snowflake --config account='myorg-account' --config user='myuser' --config authenticator='jwt' --config private_key_file='/path/to/key.pem'",
+      "python -m mcp_platform deploy snowflake --config account='myorg-account' --config user='myuser' --config authenticator='externalbrowser'",
+      "python -m mcp_platform deploy snowflake --config account='myorg-account' --config user='myuser' --config warehouse='COMPUTE_WH' --config database='ANALYTICS'",
+      "python -m mcp_platform deploy snowflake --config account='myorg-account' --config user='myuser' --config read_only=false --config max_results=50000"
+    ],
+    "client_integration": {
+      "fastmcp": "from fastmcp.client import FastMCPClient\nclient = FastMCPClient(endpoint='http://localhost:7081')\nresult = client.call('list_databases', {})",
+      "curl": "curl -X POST http://localhost:7081/call -H 'Content-Type: application/json' -d '{\"method\": \"execute_query\", \"params\": {\"query\": \"SELECT COUNT(*) FROM users\"}}'"
+    }
+  }
+}

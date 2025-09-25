@@ -7,10 +7,8 @@ for the new Python FastMCP implementation.
 
 import json
 import os
-
 # Import the server module
 import sys
-
 # Import unittest.mock for the cancel_query test
 import unittest.mock
 from unittest.mock import Mock, patch

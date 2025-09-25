@@ -10,7 +10,8 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 
 from mcp_platform.backends import get_backend
-from mcp_platform.core.config_processor import RESERVED_ENV_VARS, ConfigProcessor
+from mcp_platform.core.config_processor import (RESERVED_ENV_VARS,
+                                                ConfigProcessor)
 from mcp_platform.core.template_manager import TemplateManager
 
 logger = logging.getLogger(__name__)
