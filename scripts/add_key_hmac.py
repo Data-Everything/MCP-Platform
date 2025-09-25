@@ -14,21 +14,25 @@ large tables. For production Postgres, prefer using Alembic with
 CREATE INDEX CONCURRENTLY.
 """
 
-import os
-import sys
 import argparse
 import asyncio
-from sqlalchemy import text, inspect
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.engine import URL
-
+import os
+import sys
 from pathlib import Path
+
+from sqlalchemy import inspect, text
+from sqlalchemy.engine import URL
+from sqlalchemy.ext.asyncio import create_async_engine
 
 DEFAULT_SQLITE = f"sqlite:///{Path.home() / '.mcp' / 'gateway.db'}"
 
 
 def get_db_url():
-    return os.environ.get("DATABASE_URL") or os.environ.get("MCP_GATEWAY_DATABASE_URL") or DEFAULT_SQLITE
+    return (
+        os.environ.get("DATABASE_URL")
+        or os.environ.get("MCP_GATEWAY_DATABASE_URL")
+        or DEFAULT_SQLITE
+    )
 
 
 async def run(db_url: str, dry_run: bool = False):
@@ -62,7 +66,9 @@ async def run(db_url: str, dry_run: bool = False):
                 print("Adding column 'key_hmac' to api_keys...")
                 # SQLite supports simple ALTER ADD COLUMN
                 try:
-                    await conn.execute(text("ALTER TABLE api_keys ADD COLUMN key_hmac TEXT"))
+                    await conn.execute(
+                        text("ALTER TABLE api_keys ADD COLUMN key_hmac TEXT")
+                    )
                     print("Added column key_hmac")
                 except Exception as e:
                     print("Failed to add column key_hmac:", e)
@@ -79,7 +85,9 @@ async def run(db_url: str, dry_run: bool = False):
             else:
                 print(f"Creating index {idx_name} on api_keys(key_hmac)...")
                 try:
-                    await conn.execute(text(f"CREATE INDEX {idx_name} ON api_keys(key_hmac)"))
+                    await conn.execute(
+                        text(f"CREATE INDEX {idx_name} ON api_keys(key_hmac)")
+                    )
                     print("Index created")
                 except Exception as e:
                     print("Failed to create index:", e)
@@ -91,7 +99,9 @@ async def run(db_url: str, dry_run: bool = False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", help="Database URL to use (overrides env)")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be done"
+    )
     args = parser.parse_args()
 
     db_url = args.db or get_db_url()

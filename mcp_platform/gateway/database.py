@@ -1,5 +1,6 @@
 """Database management for the MCP Platform Gateway."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, List, Optional
@@ -13,7 +14,6 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
-import asyncio
 
 from .models import (
     APIKey,
@@ -159,7 +159,9 @@ class DatabaseManager:
         # an operator. This avoids surprising schema changes during
         # process start in production environments.
         self._initialized = True
-        logger.info("Database engine and session factory initialized (migrations not applied automatically)")
+        logger.info(
+            "Database engine and session factory initialized (migrations not applied automatically)"
+        )
 
     async def _create_tables(self):
         """Create database tables."""
@@ -203,7 +205,9 @@ class DatabaseManager:
         # Read alembic_version from the DB
         try:
             async with self.get_session() as session:
-                result = await session.execute(text("SELECT version_num FROM alembic_version"))
+                result = await session.execute(
+                    text("SELECT version_num FROM alembic_version")
+                )
                 row = result.scalar_one_or_none()
         except Exception:
             # Table missing or query failed => not migrated
@@ -218,8 +222,8 @@ class DatabaseManager:
         performs blocking I/O and uses its own engine/connection lifecycle.
         """
         try:
-            import alembic.config as alembic_config
             import alembic.command as alembic_command
+            import alembic.config as alembic_config
         except Exception as e:
             raise RuntimeError("Alembic is not available in this environment") from e
 

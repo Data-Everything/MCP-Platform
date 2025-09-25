@@ -23,7 +23,6 @@ from .auth import initialize_auth
 from .database import initialize_database
 from .gateway_server import MCPGatewayServer
 from .models import AuthConfig, DatabaseConfig, GatewayConfig
-from .database import get_database
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -419,15 +418,23 @@ def initialize_database_cmd(
             # back to creating tables directly.
             try:
                 await db.apply_migrations()
-                console.print("[green]✓ Database migrations applied successfully[/green]")
+                console.print(
+                    "[green]✓ Database migrations applied successfully[/green]"
+                )
             except Exception as e:
                 if force:
-                    console.print(f"[yellow]⚠️ Alembic migrations failed ({e}); falling back to create_all() due to --force[/yellow]")
+                    console.print(
+                        f"[yellow]⚠️ Alembic migrations failed ({e}); falling back to create_all() due to --force[/yellow]"
+                    )
                     await db._create_tables()
-                    console.print("[green]✓ Database tables created (force fallback)[/green]")
+                    console.print(
+                        "[green]✓ Database tables created (force fallback)[/green]"
+                    )
                 else:
                     console.print(f"[red]✗ Failed to apply migrations: {e}[/red]")
-                    console.print("Run with --force to create tables directly, or install/configure Alembic and run again.")
+                    console.print(
+                        "Run with --force to create tables directly, or install/configure Alembic and run again."
+                    )
                     raise typer.Exit(1)
 
             console.print(f"Database URL: [cyan]{db_url}[/cyan]")

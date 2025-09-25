@@ -196,7 +196,9 @@ class TestAuthManager:
         )
 
         # Mock the database calls to return the API key by id
-        self.auth_manager.api_key_crud.get_api_key = AsyncMock(return_value=mock_api_key)
+        self.auth_manager.api_key_crud.get_api_key = AsyncMock(
+            return_value=mock_api_key
+        )
         self.auth_manager.api_key_crud.update = AsyncMock()
 
         result = await self.auth_manager.authenticate_api_key(token)
@@ -222,7 +224,9 @@ class TestAuthManager:
         )
 
         # Mock the database calls
-        self.auth_manager.api_key_crud.get_api_key = AsyncMock(return_value=mock_api_key)
+        self.auth_manager.api_key_crud.get_api_key = AsyncMock(
+            return_value=mock_api_key
+        )
         self.auth_manager.api_key_crud.update = AsyncMock()
 
         result = await self.auth_manager.authenticate_api_key(token)
@@ -268,7 +272,9 @@ class TestAuthManager:
         )
 
         # Mock the database calls
-        self.auth_manager.api_key_crud.get_api_key = AsyncMock(return_value=mock_api_key)
+        self.auth_manager.api_key_crud.get_api_key = AsyncMock(
+            return_value=mock_api_key
+        )
 
         result = await self.auth_manager.authenticate_api_key(token)
 

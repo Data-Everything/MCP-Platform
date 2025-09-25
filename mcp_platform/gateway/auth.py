@@ -4,10 +4,10 @@ Authentication module for MCP Gateway.
 Provides JWT token authentication, API key management, and security utilities.
 """
 
-import secrets
-import hmac
-import hashlib
 import asyncio
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Union
 
@@ -186,7 +186,9 @@ class AuthManager:
 
             if hasattr(self.api_key_crud, "get_api_key_by_hmac"):
                 try:
-                    key_record = await self.api_key_crud.get_api_key_by_hmac(key_hmac_val)
+                    key_record = await self.api_key_crud.get_api_key_by_hmac(
+                        key_hmac_val
+                    )
                 except Exception:
                     key_record = None
 

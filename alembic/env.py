@@ -1,11 +1,12 @@
-from logging.config import fileConfig
+import asyncio
 import os
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-from alembic import context
+from logging.config import fileConfig
+
+from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import create_async_engine
-import asyncio
+
+from alembic import context
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -18,9 +19,11 @@ fileConfig(config.config_file_name)
 # add your model's MetaData object here
 # for 'autogenerate' support
 from sqlmodel import SQLModel
+
 from mcp_platform.gateway.models import APIKey  # ensure models are imported
 
 # target_metadata = SQLModel.metadata
+
 
 def get_url():
     # Default to a local sqlite file in the user's home under ~/.mcp when
@@ -29,6 +32,7 @@ def get_url():
 
     default_db = Path.home() / ".mcp" / "gateway.db"
     return os.getenv("DATABASE_URL", f"sqlite:///{default_db}")
+
 
 config.set_main_option("sqlalchemy.url", get_url())
 
@@ -50,7 +54,11 @@ def run_migrations_online():
     url = config.get_main_option("sqlalchemy.url")
     sa_url = make_url(url)
 
-    is_async = sa_url.drivername.endswith('+asyncpg') or sa_url.drivername.endswith('+aiosqlite') or 'async' in sa_url.drivername
+    is_async = (
+        sa_url.drivername.endswith("+asyncpg")
+        or sa_url.drivername.endswith("+aiosqlite")
+        or "async" in sa_url.drivername
+    )
 
     if is_async:
         # For async URLs, use the async engine and run migrations in a sync
@@ -60,7 +68,12 @@ def run_migrations_online():
 
         async def do_migrations():
             async with async_engine.connect() as connection:
-                await connection.run_sync(lambda sync_conn: context.configure(connection=sync_conn, target_metadata=target_metadata) or None)
+                await connection.run_sync(
+                    lambda sync_conn: context.configure(
+                        connection=sync_conn, target_metadata=target_metadata
+                    )
+                    or None
+                )
                 # Run migrations inside a synchronous context provided by
                 # run_sync. Alembic's context.run_migrations must be called in
                 # that synchronous context.
