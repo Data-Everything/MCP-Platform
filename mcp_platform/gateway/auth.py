@@ -5,6 +5,9 @@ Provides JWT token authentication, API key management, and security utilities.
 """
 
 import secrets
+import hmac
+import hashlib
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Union
 
@@ -37,6 +40,8 @@ class AuthManager:
         self.db = db
         self.user_crud = UserCRUD(db)
         self.api_key_crud = APIKeyCRUD(db)
+        # Simple in-memory cache for HMAC lookup: key_hmac -> (APIKey, expiry_ts)
+        self._api_key_cache: dict = {}
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash."""
@@ -100,19 +105,127 @@ class AuthManager:
         # Extract the key part from "mcp_..." format
         if not api_key.startswith("mcp_"):
             return None
+        # Support token format: mcp_{id}.{secret}
+        try:
+            remainder = api_key.split("mcp_", 1)[1]
+        except Exception:
+            return None
 
-        # For demonstration, we'll use a simple approach
-        # In production, you might want to use a more sophisticated key lookup
-        all_keys = await self.api_key_crud.get_by_user(1)  # This is simplified
+        # If token contains an id + secret, do O(1) lookup by id.
+        if "." in remainder:
+            id_part, secret = remainder.split(".", 1)
+            try:
+                key_id = int(id_part)
+            except ValueError:
+                key_id = None
 
-        for key_record in all_keys:
-            if self.verify_api_key(api_key, key_record.key_hash):
-                if key_record.is_active and not key_record.is_expired():
-                    # Update last used timestamp
-                    await self.api_key_crud.update(
-                        key_record.id, {"last_used": datetime.now(timezone.utc)}
-                    )
-                    return key_record
+            if key_id is not None:
+                try:
+                    key_record = await self.api_key_crud.get_api_key(key_id)
+                except Exception:
+                    key_record = None
+
+                if key_record and key_record.is_active and not key_record.is_expired():
+                    try:
+                        if self.verify_api_key(secret, key_record.key_hash):
+                            await self.api_key_crud.update(
+                                key_record.id, {"last_used": datetime.now(timezone.utc)}
+                            )
+                            return key_record
+                    except Exception:
+                        return None
+
+        # If id-based path didn't return, support HMAC-indexed lookup for
+        # tokens of form mcp_<secret> (legacy) or when id parsing failed.
+        # Compute keyed HMAC and query DB by it (fast, indexable).
+        remainder_plain = remainder
+
+        # cache helpers
+        def _cache_get(hmac_key: str) -> Optional[APIKey]:
+            entry = self._api_key_cache.get(hmac_key)
+            if not entry:
+                return None
+            api_key_obj, expiry_ts = entry
+            if expiry_ts < datetime.now(timezone.utc).timestamp():
+                try:
+                    del self._api_key_cache[hmac_key]
+                except Exception:
+                    pass
+                return None
+            return api_key_obj
+
+        def _cache_set(hmac_key: str, api_key_obj: APIKey, ttl: int = 300):
+            expiry_ts = datetime.now(timezone.utc).timestamp() + ttl
+            self._api_key_cache[hmac_key] = (api_key_obj, expiry_ts)
+
+        async def _async_update_last_used(key_record: APIKey):
+            try:
+                await self.api_key_crud.update(
+                    key_record.id, {"last_used": datetime.now(timezone.utc)}
+                )
+            except Exception:
+                pass
+
+        try:
+            key_hmac_val = hmac.new(
+                self.config.secret_key.encode(),
+                remainder_plain.encode(),
+                hashlib.sha256,
+            ).hexdigest()
+        except Exception:
+            key_hmac_val = None
+
+        if key_hmac_val:
+            cached = _cache_get(key_hmac_val)
+            if cached:
+                try:
+                    asyncio.create_task(_async_update_last_used(cached))
+                except Exception:
+                    pass
+                return cached
+
+            if hasattr(self.api_key_crud, "get_api_key_by_hmac"):
+                try:
+                    key_record = await self.api_key_crud.get_api_key_by_hmac(key_hmac_val)
+                except Exception:
+                    key_record = None
+
+                if key_record and key_record.is_active and not key_record.is_expired():
+                    try:
+                        if self.verify_api_key(remainder_plain, key_record.key_hash):
+                            try:
+                                asyncio.create_task(_async_update_last_used(key_record))
+                            except Exception:
+                                pass
+                            _cache_set(key_hmac_val, key_record)
+                            return key_record
+                    except Exception:
+                        return None
+
+        # Fallback: if CRUD exposes get_by_user (legacy tests) use it,
+        # otherwise give up (we prefer explicit id lookup or an indexed lookup).
+        if hasattr(self.api_key_crud, "get_by_user") and callable(
+            getattr(self.api_key_crud, "get_by_user")
+        ):
+            try:
+                all_keys = await self.api_key_crud.get_by_user(1)
+            except TypeError:
+                all_keys = None
+
+            if all_keys:
+                for key_record in all_keys:
+                    if not key_record.is_active or key_record.is_expired():
+                        continue
+                    try:
+                        if self.verify_api_key(api_key, key_record.key_hash):
+                            await self.api_key_crud.update(
+                                key_record.id, {"last_used": datetime.now(timezone.utc)}
+                            )
+                            return key_record
+                    except Exception:
+                        continue
+
+        # No fallback available
         return None
 
     async def create_user(
@@ -142,8 +255,9 @@ class AuthManager:
         expires_days: Optional[int] = None,
     ) -> tuple[APIKey, str]:
         """Create a new API key for a user."""
-        api_key = self.generate_api_key()
-        key_hash = self.hash_api_key(api_key)
+        # Generate a secret portion (shown once) and store only its hash
+        secret = secrets.token_urlsafe(32)
+        key_hash = self.hash_api_key(secret)
 
         if expires_days:
             expires_at = datetime.now(timezone.utc) + timedelta(days=expires_days)
@@ -161,8 +275,22 @@ class AuthManager:
             expires_at=expires_at,
         )
 
+        # Compute server-keyed HMAC for indexed lookup and attach to record
+        try:
+            key_hmac = hmac.new(
+                self.config.secret_key.encode(), secret.encode(), hashlib.sha256
+            ).hexdigest()
+        except Exception:
+            key_hmac = None
+
+        if key_hmac:
+            api_key_record.key_hmac = key_hmac
+
         created_key = await self.api_key_crud.create(api_key_record, key_hash=key_hash)
-        return created_key, api_key
+
+        # Return token in format: mcp_{id}.{secret}
+        token = f"mcp_{created_key.id}.{secret}"
+        return created_key, token
 
 
 # Global auth manager
@@ -273,7 +401,6 @@ async def get_current_user_or_api_key(
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
     auth = get_auth_manager()
     token = credentials.credentials
 

@@ -1,0 +1,34 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    environment:
+      # Database connection settings
+      PG_HOST: db
+      PG_PORT: 5432
+      PG_NAME: mcp_db
+      PG_USER: mcp_user
+      PG_PASSWORD: mcp_pass
+    # Ensure app depends on db
+    depends_on:
+      - db
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mcp_user
+      POSTGRES_PASSWORD: mcp_pass
+      POSTGRES_DB: mcp_db
+    volumes:
+      - mcp_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  mcp_pgdata:

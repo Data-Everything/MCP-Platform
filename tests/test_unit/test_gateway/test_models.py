@@ -259,7 +259,8 @@ class TestConfigModels:
     def test_database_config(self):
         """Test DatabaseConfig model."""
         config = DatabaseConfig()
-        assert config.url == "sqlite:///./gateway.db"
+        assert config.url.startswith("sqlite:///")
+        assert ".mcp" in config.url
         assert config.echo is False
         assert config.pool_size == 5
         assert config.max_overflow == 10

@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
+import asyncio
 
 from .models import (
     APIKey,
@@ -152,15 +153,86 @@ class DatabaseManager:
             expire_on_commit=False,
         )
 
-        await self._create_tables()
-
+        # Only set up the engine and session factory here. We do NOT
+        # apply Alembic migrations automatically at startup. The CLI
+        # (`db-init`) should be used to apply migrations explicitly by
+        # an operator. This avoids surprising schema changes during
+        # process start in production environments.
         self._initialized = True
-        logger.info("Database initialized successfully")
+        logger.info("Database engine and session factory initialized (migrations not applied automatically)")
 
     async def _create_tables(self):
         """Create database tables."""
         async with self.engine.begin() as conn:
             await conn.run_sync(SQLModel.metadata.create_all)
+
+    async def _apply_alembic_migrations(self):
+        """Attempt to run Alembic migrations against the configured DB.
+
+        This imports alembic.command and points Alembic at the same
+        database URL used by the running application. It runs in a
+        thread-safe manner by invoking Alembic's command API.
+        """
+        # Keep this method for backwards compatibility. Prefer using
+        # apply_migrations() which is the public API used by the CLI.
+        return await self.apply_migrations()
+
+    async def migrations_applied(self) -> bool:
+        """Return True if the database has Alembic migrations applied up to head.
+
+        This checks the `alembic_version` table for the currently applied
+        revision and compares it to the repository head(s). If Alembic is not
+        installed or the DB does not contain the alembic_version table, this
+        returns False.
+        """
+        try:
+            import alembic.config as alembic_config
+            from alembic.script import ScriptDirectory
+        except Exception:
+            # Alembic not available -> treat as not migrated
+            return False
+
+        alembic_cfg = alembic_config.Config("alembic.ini")
+        alembic_cfg.set_main_option("sqlalchemy.url", self.config.database.url)
+
+        sd = ScriptDirectory.from_config(alembic_cfg)
+        heads = sd.get_heads() or []
+        if not heads:
+            return False
+
+        # Read alembic_version from the DB
+        try:
+            async with self.get_session() as session:
+                result = await session.execute(text("SELECT version_num FROM alembic_version"))
+                row = result.scalar_one_or_none()
+        except Exception:
+            # Table missing or query failed => not migrated
+            return False
+
+        return bool(row) and row in heads
+
+    async def apply_migrations(self):
+        """Apply Alembic migrations (upgrade to head) for the configured DB.
+
+        This uses Alembic's command API in a thread executor since Alembic
+        performs blocking I/O and uses its own engine/connection lifecycle.
+        """
+        try:
+            import alembic.config as alembic_config
+            import alembic.command as alembic_command
+        except Exception as e:
+            raise RuntimeError("Alembic is not available in this environment") from e
+
+        alembic_cfg = alembic_config.Config("alembic.ini")
+        db_url = self.config.database.url
+        alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+
+        loop = asyncio.get_event_loop()
+
+        def run_upgrade():
+            alembic_command.upgrade(alembic_cfg, "head")
+
+        await loop.run_in_executor(None, run_upgrade)
 
     async def close(self):
         """Close database connections."""
@@ -360,6 +432,16 @@ class DatabaseManager:
         async with self.get_session() as session:
             result = await session.get(APIKey, key_id)
             return result
+
+    async def get_api_key_by_hmac(self, key_hmac: str) -> Optional[APIKey]:
+        """Get API key by keyed HMAC value."""
+        async with self.get_session() as session:
+            from sqlalchemy import select
+
+            result = await session.execute(
+                select(APIKey).where(APIKey.key_hmac == key_hmac)
+            )
+            return result.scalar_one_or_none()
 
     async def get_api_keys(self, skip: int = 0, limit: int = 100) -> List[APIKey]:
         """Get all API keys with pagination."""
@@ -679,6 +761,10 @@ class APIKeyCRUD(BaseCRUD):
 
             result = await session.execute(select(APIKey).where(APIKey.key == key))
             return result.scalar_one_or_none()
+
+    async def get_api_key_by_hmac(self, key_hmac: str) -> Optional[APIKey]:
+        """Get API key by HMAC via DatabaseManager."""
+        return await self.db.get_api_key_by_hmac(key_hmac)
 
     async def update(self, key_id: str, api_key_data: dict) -> Optional[APIKey]:
         """Update API key."""

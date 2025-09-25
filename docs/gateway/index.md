@@ -12,7 +12,7 @@
 - **Concurrent Operations**: Support for high-concurrency scenarios
 - **Async Database Operations**: Full async/await support for optimal performance*Enhanced MCP Gateway** is a production-ready, enterprise-grade unified load balancer and proxy system that provides a single entry point for accessing all MCP (Model Context Protocol) server instances in your deployment. This enhanced version includes comprehensive authentication, database persistence, and a powerful Python SDK for programmatic access.
 
-## Why is the Enhanced Gateway Needed?
+## Why is the Gateway Needed?
 
 ### Problems with Direct MCP Server Access
 
@@ -26,7 +26,7 @@ Before the gateway, clients had to:
 6. **Implement Authentication**: Each client needed custom authentication logic
 7. **Manage State Persistence**: No centralized state management
 
-### Benefits of Using the Enhanced Gateway
+### Benefits of Using the Gateway
 
 The Enhanced MCP Gateway solves these problems by providing:
 
@@ -107,7 +107,7 @@ The Enhanced MCP Gateway solves these problems by providing:
 
 ### Core Components
 
-1. **Enhanced Gateway Server**: FastAPI-based server with authentication middleware
+1. **Gateway Server**: FastAPI-based server with authentication middleware
 2. **Authentication System**: JWT and API key authentication with role-based access
 3. **Database Layer**: SQLModel/SQLAlchemy with async operations and Pydantic validation
 4. **Enhanced Registry**: State management with database persistence
@@ -613,7 +613,7 @@ fs_client = MCPClient("http://localhost:7071")
 db_client = MCPClient("http://localhost:7072")
 ```
 
-After (Enhanced Gateway Access):
+After (Gateway Access):
 ```python
 # Single gateway connection with authentication
 from mcp_platform.client import GatewayClient, MCPClient

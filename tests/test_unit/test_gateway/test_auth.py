@@ -182,8 +182,10 @@ class TestAuthManager:
     @pytest.mark.asyncio
     async def test_authenticate_api_key_success(self):
         """Test successful API key authentication."""
-        api_key = "mcp_test_api_key"
-        hashed_key = self.auth_manager.hash_api_key(api_key)
+        # Create a secret and token in the new format mcp_{id}.{secret}
+        secret = "secret_value"
+        token = "mcp_1." + secret
+        hashed_key = self.auth_manager.hash_api_key(secret)
         mock_api_key = APIKey(
             id=1,
             name="Test Key",
@@ -193,15 +195,11 @@ class TestAuthManager:
             expires_at=None,
         )
 
-        # Mock the database calls
-        self.auth_manager.api_key_crud.get_by_user = AsyncMock(
-            return_value=[mock_api_key]
-        )
+        # Mock the database calls to return the API key by id
+        self.auth_manager.api_key_crud.get_api_key = AsyncMock(return_value=mock_api_key)
         self.auth_manager.api_key_crud.update = AsyncMock()
 
-        # Mock the hash verification to return True for our test key
-        with patch.object(self.auth_manager, "verify_api_key", return_value=True):
-            result = await self.auth_manager.authenticate_api_key(api_key)
+        result = await self.auth_manager.authenticate_api_key(token)
 
         assert result == mock_api_key
         # Verify that last_used was updated
@@ -210,8 +208,9 @@ class TestAuthManager:
     @pytest.mark.asyncio
     async def test_authenticate_expired_api_key(self):
         """Test authentication with expired API key."""
-        api_key = "mcp_test_api_key"
-        hashed_key = self.auth_manager.hash_api_key(api_key)
+        secret = "secret_value"
+        token = "mcp_1." + secret
+        hashed_key = self.auth_manager.hash_api_key(secret)
         past_time = datetime.now(timezone.utc) - timedelta(days=1)
         mock_api_key = APIKey(
             id=1,
@@ -223,13 +222,10 @@ class TestAuthManager:
         )
 
         # Mock the database calls
-        self.auth_manager.api_key_crud.get_by_user = AsyncMock(
-            return_value=[mock_api_key]
-        )
+        self.auth_manager.api_key_crud.get_api_key = AsyncMock(return_value=mock_api_key)
         self.auth_manager.api_key_crud.update = AsyncMock()
 
-        with patch.object(self.auth_manager, "verify_api_key", return_value=True):
-            result = await self.auth_manager.authenticate_api_key(api_key)
+        result = await self.auth_manager.authenticate_api_key(token)
 
         assert result is None
         # Should not update last_used for expired keys
@@ -247,20 +243,21 @@ class TestAuthManager:
     @pytest.mark.asyncio
     async def test_authenticate_api_key_not_found(self):
         """Test authentication with API key that doesn't exist."""
-        api_key = "mcp_nonexistent_key"
+        token = "mcp_999.nonexistent"
 
-        # Mock empty list (no keys found)
-        self.auth_manager.api_key_crud.get_by_user = AsyncMock(return_value=[])
+        # Mock DB returning no record for id
+        self.auth_manager.api_key_crud.get_api_key = AsyncMock(return_value=None)
 
-        result = await self.auth_manager.authenticate_api_key(api_key)
+        result = await self.auth_manager.authenticate_api_key(token)
 
         assert result is None
 
     @pytest.mark.asyncio
     async def test_authenticate_inactive_api_key(self):
         """Test authentication with inactive API key."""
-        api_key = "mcp_test_api_key"
-        hashed_key = self.auth_manager.hash_api_key(api_key)
+        secret = "secret_value"
+        token = "mcp_1." + secret
+        hashed_key = self.auth_manager.hash_api_key(secret)
         mock_api_key = APIKey(
             id=1,
             name="Inactive Key",
@@ -271,12 +268,9 @@ class TestAuthManager:
         )
 
         # Mock the database calls
-        self.auth_manager.api_key_crud.get_by_user = AsyncMock(
-            return_value=[mock_api_key]
-        )
+        self.auth_manager.api_key_crud.get_api_key = AsyncMock(return_value=mock_api_key)
 
-        with patch.object(self.auth_manager, "verify_api_key", return_value=True):
-            result = await self.auth_manager.authenticate_api_key(api_key)
+        result = await self.auth_manager.authenticate_api_key(token)
 
         assert result is None
 

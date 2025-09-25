@@ -82,15 +82,92 @@ The Enhanced MCP Gateway is a production-ready, enterprise-grade HTTP gateway an
 
 #### Database Configuration Examples
 ```python
-# Development (default) - SQLite
-DATABASE_URL = "sqlite:///gateway.db"
+# Development (default) - SQLite (per-user path)
+# By default the gateway uses a per-user database file under the user's
+# home directory: ~/.mcp/gateway.db. This requires no configuration for a
+# local developer workflow.
+DATABASE_URL = f"sqlite:///{Path.home() / '.mcp' / 'gateway.db'}"
 
-# Production - PostgreSQL
+# Production - PostgreSQL (async driver)
 DATABASE_URL = "postgresql+asyncpg://user:pass@localhost/gateway"
 
-# Production - MySQL
+# Production - PostgreSQL (sync driver)
+# If you prefer a sync driver in your environment (e.g. for older tooling),
+# use psycopg2 and the URL below:
+DATABASE_URL = "postgresql+psycopg2://user:pass@localhost/gateway"
+
+# Production - MySQL (async driver)
 DATABASE_URL = "mysql+aiomysql://user:pass@localhost/gateway"
 ```
+
+### Database & Migrations
+
+This project supports a simple developer workflow (local per-user sqlite)
+and production-grade deployments (PostgreSQL, MySQL). Key points:
+
+- Default SQLite path: the gateway defaults to a sqlite database located at
+  Path.home() / ".mcp" / "gateway.db" (for example /home/alice/.mcp/gateway.db).
+  This avoids creating DB files in the repository and keeps local data in a
+  user-specific directory.
+
+- Alembic migrations: Alembic is used to manage schema changes. The repo
+  includes two migrations:
+  - `20250925_initial.py` — initial migration which creates all tables using
+    SQLModel.metadata (the canonical first migration).
+  - `20250925_add_key_hmac.py` — adds the `key_hmac` column and an index on
+    `api_keys.key_hmac`. When running against PostgreSQL this migration will
+    create/drop the index using `CONCURRENTLY` to avoid long table locks.
+
+- Runtime migration behavior: on gateway startup the `DatabaseManager`
+  attempts to run Alembic `upgrade head` automatically (using the same
+  DATABASE_URL the gateway uses). If Alembic is not installed or the
+  migration run fails for any reason, the gateway falls back to using
+  `SQLModel.metadata.create_all` to create any missing tables. This makes the
+  service resilient for local development while supporting proper migrations
+  in production.
+
+- Async vs Sync drivers:
+  - The Alembic environment in this repo detects async-style DB URLs
+    (e.g. `postgresql+asyncpg`, `sqlite+aiosqlite`) and will create an async
+    engine and run migrations appropriately.
+  - For sync-style URLs (e.g. `postgresql+psycopg2`) the normal sync engine
+    path is used.
+  - Install the appropriate drivers in your environment:
+    - Async Postgres: `pip install asyncpg`
+    - Sync Postgres: `pip install psycopg2-binary`
+    - Async MySQL: `pip install aiomysql`
+
+- Running migrations manually:
+  - Ensure `alembic` is installed in your environment: `pip install alembic`
+  - Set `DATABASE_URL` to the desired DB URL (or rely on the default
+    sqlite path for local testing)
+  - From the repository root run:
+
+```bash
+export DATABASE_URL=sqlite:///$HOME/.mcp/gateway.db
+alembic upgrade head
+```
+
+Or for Postgres (async):
+
+```bash
+export DATABASE_URL='postgresql+asyncpg://user:pass@host:5432/dbname'
+pip install alembic asyncpg
+alembic upgrade head
+```
+
+- Postgres index note: the `add_key_hmac` migration prefers to create the
+  index using `CREATE INDEX CONCURRENTLY` to avoid locking large tables. This
+  operation cannot be run inside a transaction and the Alembic env will
+  execute it outside the transaction automatically.
+
+- Backfilling note: if you have existing API keys and need to populate
+  `key_hmac`, you must have the plaintext secret values to compute the HMAC.
+  If the plaintext secrets are not available, rotate/regenerate keys for
+  users to produce the HMAC values.
+
+If you want help running migrations in your environment or adding a small
+backfill helper script for `key_hmac`, I can add that next.
 
 ### 📦 Python SDK & Client Integration
 - **GatewayClient**: Comprehensive HTTP client for gateway interaction
@@ -128,7 +205,7 @@ if not tools:
 
 ### Core Components
 
-#### 1. **Enhanced Gateway Server** (`gateway_server.py`)
+#### 1. **Gateway Server** (`gateway_server.py`)
 - **Framework**: FastAPI with advanced middleware and dependency injection
 - **Authentication**: JWT and API key authentication middleware
 - **Performance**: Async/await throughout with connection pooling

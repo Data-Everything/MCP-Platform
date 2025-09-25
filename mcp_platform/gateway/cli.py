@@ -1,5 +1,5 @@
 """
-Enhanced Gateway CLI commands with authentication, database management, and improved features.
+Gateway CLI commands with authentication, database management, and improved features.
 
 Provides comprehensive gateway management including user management, API key creation,
 database operations, and advanced configuration options.
@@ -23,6 +23,7 @@ from .auth import initialize_auth
 from .database import initialize_database
 from .gateway_server import MCPGatewayServer
 from .models import AuthConfig, DatabaseConfig, GatewayConfig
+from .database import get_database
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -79,7 +80,7 @@ def start_gateway(
 
     # Generate secret key if not provided
     if not secret_key:
-        secret_key = os.getenv("GATEWAY_SECRET_KEY")
+        secret_key = os.getenv("GATEWAY_SECRET_KEY", "dev-key-to-be-changed")
         if not secret_key:
             secret_key = secrets.token_urlsafe(32)
             console.print(
@@ -101,6 +102,26 @@ def start_gateway(
             database=DatabaseConfig(url=database_url),
             auth=AuthConfig(secret_key=secret_key),
         )
+        # Initialize database engine/session (do NOT apply migrations here)
+        db = asyncio.run(initialize_database(config))
+
+        # Before starting, ensure database migrations have been applied.
+        # The operator must run `gateway db-init` to apply migrations.
+        migrated = False
+        try:
+            migrated = asyncio.run(db.migrations_applied())
+        except Exception:
+            migrated = False
+
+        if not migrated:
+            console.print(
+                "[red]✗ Database migrations are not applied. Run `gateway db-init` to initialize the database before starting the server.[/red]"
+            )
+            try:
+                asyncio.run(db.close())
+            except Exception:
+                pass
+            raise typer.Exit(2)
 
         # Create gateway server
         gateway = MCPGatewayServer(config)
@@ -125,7 +146,7 @@ def start_gateway(
                 f"[bold]MCP Endpoints:[/bold]\n"
                 f"• List tools: [cyan]GET /mcp/{{template}}/tools/list[/cyan]\n"
                 f"• Call tool: [cyan]POST /mcp/{{template}}/tools/call[/cyan]",
-                title="🚀 Starting Enhanced Gateway",
+                title="🚀 Starting Gateway",
                 border_style="green",
             )
         )
@@ -390,8 +411,25 @@ def initialize_database_cmd(
         )
 
         try:
+            # Initialize engine/session
             db = await initialize_database(config)
-            console.print("[green]✓ Database initialized successfully[/green]")
+
+            # Attempt to apply Alembic migrations; if Alembic is not
+            # available or migrations fail and --force is provided, fall
+            # back to creating tables directly.
+            try:
+                await db.apply_migrations()
+                console.print("[green]✓ Database migrations applied successfully[/green]")
+            except Exception as e:
+                if force:
+                    console.print(f"[yellow]⚠️ Alembic migrations failed ({e}); falling back to create_all() due to --force[/yellow]")
+                    await db._create_tables()
+                    console.print("[green]✓ Database tables created (force fallback)[/green]")
+                else:
+                    console.print(f"[red]✗ Failed to apply migrations: {e}[/red]")
+                    console.print("Run with --force to create tables directly, or install/configure Alembic and run again.")
+                    raise typer.Exit(1)
+
             console.print(f"Database URL: [cyan]{db_url}[/cyan]")
             await db.close()
         except Exception as e:
