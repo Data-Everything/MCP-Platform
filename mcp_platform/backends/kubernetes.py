@@ -3,6 +3,7 @@ Kubernetes deployment backend for managing deployments on Kubernetes clusters.
 """
 
 import logging
+import os
 import time
 import uuid
 from contextlib import suppress
@@ -38,7 +39,9 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
 
         super().__init__()
         self.namespace = namespace
-        self.kubeconfig_path = kubeconfig_path
+        self.kubeconfig_path = kubeconfig_path or os.getenv(
+            "MCP_PLATFORM_KUBECONFIG", None
+        )
         self._ensure_kubernetes_available()
         self._ensure_namespace_exists()
 
@@ -79,9 +82,9 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             self.core_v1.get_api_resources()
             logger.info("Connected to Kubernetes API")
 
-        except Exception as e:
-            logger.debug(f"Failed to connect to Kubernetes API: {e}")
-            raise RuntimeError("Kubernetes backend unavailable")
+        except Exception as exception:
+            logger.debug("Failed to connect to Kubernetes API: %s", exception)
+            raise RuntimeError("Kubernetes backend unavailable") from exception
         finally:
             logger.setLevel(old_level)
 
@@ -89,10 +92,10 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         """Ensure the target namespace exists."""
         try:
             if dry_run:
-                logger.info(f"[DRY RUN] Would check/create namespace {self.namespace}")
+                logger.info("[DRY RUN] Would check/create namespace %s", self.namespace)
                 return
             self.core_v1.read_namespace(name=self.namespace)
-            logger.debug(f"Namespace {self.namespace} exists")
+            logger.debug("Namespace %s exists", self.namespace)
         except ApiException as e:
             if e.status == 404:
                 # Create namespace
@@ -103,10 +106,10 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                     )
                 )
                 if dry_run:
-                    logger.info(f"[DRY RUN] Would create namespace {self.namespace}")
+                    logger.info("[DRY RUN] Would create namespace %s", self.namespace)
                 else:
                     self.core_v1.create_namespace(body=namespace_body)
-                    logger.info(f"Created namespace {self.namespace}")
+                    logger.info("Created namespace %s", self.namespace)
             else:
                 raise
 

@@ -51,6 +51,16 @@ MCP Templates supports various environment variables to configure system behavio
   export MCP_BACKEND=kubernetes
   ```
 
+### MCP_PLATFORM_KUBECONFIG
+- **Description**: Path to the kubeconfig file for Kubernetes backend
+- **Default**: System default kubeconfig location (`~/.kube/config`)
+- **Type**: String (file path)
+- **Usage**: Used by the Kubernetes backend to locate the kubeconfig file
+- **Example**:
+  ```bash
+  export MCP_PLATFORM_KUBECONFIG=/path/to/custom/kubeconfig
+  ```
+
 ### MCP_STDIO_TIMEOUT
 - **Description**: Timeout (in seconds) for stdio-based MCP server communications
 - **Default**: `30`
