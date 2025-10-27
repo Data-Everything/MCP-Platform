@@ -15,15 +15,13 @@ import pytest
 from rich.console import Console
 from rich.table import Table
 
-from mcp_platform.core.response_formatter import (
-    ResponseFormatter,
-    format_deployment_summary,
-    format_timestamp,
-    get_backend_color,
-    get_backend_icon,
-    get_backend_indicator,
-    get_status_color,
-)
+from mcp_platform.core.response_formatter import (ResponseFormatter,
+                                                  format_deployment_summary,
+                                                  format_timestamp,
+                                                  get_backend_color,
+                                                  get_backend_icon,
+                                                  get_backend_indicator,
+                                                  get_status_color)
 
 pytestmark = pytest.mark.unit
 

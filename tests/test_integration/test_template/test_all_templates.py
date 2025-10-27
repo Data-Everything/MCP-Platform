@@ -7,11 +7,8 @@ import pytest
 # Add src to Python path for testing
 from mcp_platform.template.utils.discovery import TemplateDiscovery
 from mcp_platform.utils import TEMPLATES_DIR
-from tests.mcp_test_utils import (
-    get_template_list,
-    run_template_tests,
-    validate_template_structure,
-)
+from tests.mcp_test_utils import (get_template_list, run_template_tests,
+                                  validate_template_structure)
 
 
 class TestAllTemplates:

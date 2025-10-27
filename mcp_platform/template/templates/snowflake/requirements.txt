@@ -1,0 +1,22 @@
+# Core MCP dependencies
+fastmcp>=2.12.2
+starlette
+
+# Snowflake connectivity
+snowflake-connector-python>=3.12.2
+
+# SQL parsing and validation
+sqlparse
+
+# Utilities
+pydantic>=2.0.0
+python-dotenv
+
+# Cryptography for key-pair authentication
+cryptography>=41.0.0
+
+# JWT support for OAuth
+pyjwt>=2.7.0
+
+# Additional SSL/TLS support
+pyopenssl>=23.2.0

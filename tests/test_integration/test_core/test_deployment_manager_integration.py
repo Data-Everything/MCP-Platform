@@ -7,7 +7,8 @@ and end-to-end deployment scenarios using mock backends.
 
 import pytest
 
-from mcp_platform.core.deployment_manager import DeploymentManager, DeploymentOptions
+from mcp_platform.core.deployment_manager import (DeploymentManager,
+                                                  DeploymentOptions)
 
 pytestmark = pytest.mark.integration
 

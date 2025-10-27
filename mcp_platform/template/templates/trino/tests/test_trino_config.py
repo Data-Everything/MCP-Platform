@@ -7,7 +7,6 @@ authentication setup using the new Python FastMCP implementation.
 
 import json
 import os
-
 # Import the configuration module
 import sys
 from unittest.mock import patch

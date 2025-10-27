@@ -29,12 +29,9 @@ from mcp_platform.cli.interactive_cli import run_interactive_shell
 from mcp_platform.client import MCPClient
 from mcp_platform.core.config_processor import ConfigProcessor
 from mcp_platform.core.multi_backend_manager import MultiBackendManager
-from mcp_platform.core.response_formatter import (
-    ResponseFormatter,
-    console,
-    format_deployment_summary,
-    get_backend_indicator,
-)
+from mcp_platform.core.response_formatter import (ResponseFormatter, console,
+                                                  format_deployment_summary,
+                                                  get_backend_indicator)
 
 response_formatter = ResponseFormatter()
 
