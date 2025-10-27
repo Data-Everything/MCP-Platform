@@ -1215,6 +1215,13 @@ async def main():
     # Update mkdocs navigation dynamically
     update_mkdocs_nav(template_docs, mkdocs_file)
 
+    # Build the documentation with mkdocs
+    if not build_docs():
+        print("❌ Documentation build failed. Exiting.")
+        sys.exit(1)
+
+    print("🎉 Documentation build completed successfully!")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

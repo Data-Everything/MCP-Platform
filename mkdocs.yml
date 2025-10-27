@@ -74,9 +74,20 @@ nav:
   - Github:
     - Overview: server-templates/github/index.md
     - Usage Guide: server-templates/github/usage.md
+  - Open Elastic Search:
+    - Overview: server-templates/open-elastic-search/index.md
+    - Usage Guide: server-templates/open-elastic-search/usage.md
+  - PostgreSQL MCP Server:
+    - Overview: server-templates/postgres/index.md
+    - Usage Guide: server-templates/postgres/usage.md
+    - API Reference: server-templates/postgres/api.md
   - Slack MCP Server:
     - Overview: server-templates/slack/index.md
     - Usage Guide: server-templates/slack/usage.md
+  - Trino MCP Server:
+    - Overview: server-templates/trino/index.md
+    - Usage Guide: server-templates/trino/usage.md
+    - API Reference: server-templates/trino/api.md
   - Zendesk MCP Server:
     - Overview: server-templates/zendesk/index.md
     - Usage Guide: server-templates/zendesk/usage.md
